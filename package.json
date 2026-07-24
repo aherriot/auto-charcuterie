@@ -6,17 +6,23 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "lint:wgsl": "node scripts/wgsl-lint.mjs engine/**/*.ts",
+    "typecheck": "tsc --noEmit",
+    "check": "npm run typecheck && npm run lint:wgsl"
   },
   "dependencies": {
+    "@dimforge/rapier3d-simd-compat": "^0.19.3",
     "next": "16.2.11",
     "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "react-dom": "19.2.4",
+    "wgpu-matrix": "^3.4.2"
   },
   "devDependencies": {
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@webgpu/types": "^0.1.71",
     "eslint": "^9",
     "eslint-config-next": "16.2.11",
     "typescript": "^5"

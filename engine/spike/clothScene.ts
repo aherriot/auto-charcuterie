@@ -9,8 +9,8 @@
  * Everything in `engine/spike/` is deleted once Phase 0 is signed off.
  */
 
-import { mat4, vec3 } from "wgpu-matrix";
 import { GPUContext, SAMPLE_COUNT } from "../gpu/device";
+import { OrbitCamera } from "../camera";
 import {
   ClothSolver,
   DEFAULT_PARAMS,
@@ -155,36 +155,13 @@ export interface SceneStats {
   slices: number;
 }
 
-/** Orbit camera driven by pointer drag + wheel, with touch pinch. */
-class OrbitCamera {
-  azimuth = 0.7;
-  elevation = 0.72;
-  distance = 2.6;
-  target = vec3.create(0, 0.12, 0);
-
-  eye(): Float32Array {
-    const ce = Math.cos(this.elevation);
-    return vec3.create(
-      this.target[0] + this.distance * ce * Math.sin(this.azimuth),
-      this.target[1] + this.distance * Math.sin(this.elevation),
-      this.target[2] + this.distance * ce * Math.cos(this.azimuth),
-    ) as Float32Array;
-  }
-
-  orbit(dx: number, dy: number) {
-    this.azimuth -= dx * 0.006;
-    this.elevation = Math.min(1.45, Math.max(-0.15, this.elevation + dy * 0.006));
-  }
-
-  zoom(delta: number) {
-    this.distance = Math.min(7, Math.max(0.8, this.distance * Math.exp(delta * 0.0012)));
-  }
-}
-
 export class ClothScene {
   private ctx!: GPUContext;
   private solver!: ClothSolver;
-  private camera = new OrbitCamera();
+  private camera = new OrbitCamera({
+    target: [0, 0.12, 0],
+    minElevation: -0.15,
+  });
 
   private clothPipeline!: GPURenderPipeline;
   private solidPipeline!: GPURenderPipeline;
@@ -329,7 +306,7 @@ export class ClothScene {
     this.rebuildClothBindGroup(clothLayout);
     this.clothLayoutRef = clothLayout;
 
-    this.attachInput(canvas);
+    this.camera.attach(canvas);
     this.writeInstances();
     this.loop(performance.now());
   }
@@ -360,44 +337,6 @@ export class ClothScene {
     d.queue.writeBuffer(vb, 0, mesh.vertices);
     d.queue.writeBuffer(ib, 0, mesh.indices);
     return { vb, ib, count: mesh.indices.length };
-  }
-
-  private attachInput(canvas: HTMLCanvasElement) {
-    let dragging = false;
-    let lastX = 0;
-    let lastY = 0;
-
-    canvas.style.touchAction = "none";
-
-    canvas.addEventListener("pointerdown", (e) => {
-      dragging = true;
-      lastX = e.clientX;
-      lastY = e.clientY;
-      canvas.setPointerCapture(e.pointerId);
-    });
-
-    canvas.addEventListener("pointermove", (e) => {
-      if (!dragging) return;
-      this.camera.orbit(e.clientX - lastX, e.clientY - lastY);
-      lastX = e.clientX;
-      lastY = e.clientY;
-    });
-
-    const stop = (e: PointerEvent) => {
-      dragging = false;
-      if (canvas.hasPointerCapture(e.pointerId)) canvas.releasePointerCapture(e.pointerId);
-    };
-    canvas.addEventListener("pointerup", stop);
-    canvas.addEventListener("pointercancel", stop);
-
-    canvas.addEventListener(
-      "wheel",
-      (e) => {
-        e.preventDefault();
-        this.camera.zoom(e.deltaY);
-      },
-      { passive: false },
-    );
   }
 
   setObstacles(obstacles: Obstacle[]) {
@@ -440,9 +379,7 @@ export class ClothScene {
 
   private updateCamera() {
     const eye = this.camera.eye();
-    const proj = mat4.perspective((50 * Math.PI) / 180, this.ctx.aspect, 0.05, 100);
-    const view = mat4.lookAt(eye, this.camera.target, vec3.create(0, 1, 0));
-    const viewProj = mat4.multiply(proj, view);
+    const viewProj = this.camera.viewProj(this.ctx.aspect);
 
     const p = this.solver.current;
     this.cameraData.set(viewProj as Float32Array, 0);
@@ -516,6 +453,7 @@ export class ClothScene {
   dispose() {
     this.disposed = true;
     cancelAnimationFrame(this.raf);
+    this.camera.dispose();
     this.solver.destroy();
     this.ctx.destroy();
   }

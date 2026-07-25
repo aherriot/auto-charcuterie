@@ -16,10 +16,19 @@ export class WebGPUUnavailableError extends Error {
   }
 }
 
+/** HDR working format. Post-processing needs headroom above 1.0 to tonemap from. */
+export const HDR_FORMAT: GPUTextureFormat = "rgba16float";
+
 export interface GPUContextOptions {
   /** Clamped device pixel ratio. Keeps 4K/Retina from melting integrated GPUs. */
   maxPixelRatio?: number;
   onDeviceLost?: (info: GPUDeviceLostInfo) => void;
+  /**
+   * Render into an offscreen HDR texture instead of straight to the swapchain,
+   * so a tonemap pass can sample the result. The spike renders direct (LDR);
+   * the real scene needs this.
+   */
+  hdr?: boolean;
 }
 
 export class GPUContext {
@@ -30,7 +39,13 @@ export class GPUContext {
 
   private msaaTexture: GPUTexture | null = null;
   private depthTexture: GPUTexture | null = null;
+  /** Single-sample HDR resolve target. Null when rendering direct to swapchain. */
+  private resolveTexture: GPUTexture | null = null;
   private maxPixelRatio: number;
+
+  /** Format the forward pass renders into — HDR when offscreen, swapchain otherwise. */
+  readonly sceneFormat: GPUTextureFormat;
+  private readonly hdr: boolean;
 
   width = 0;
   height = 0;
@@ -41,12 +56,15 @@ export class GPUContext {
     context: GPUCanvasContext,
     format: GPUTextureFormat,
     maxPixelRatio: number,
+    hdr: boolean,
   ) {
     this.canvas = canvas;
     this.device = device;
     this.context = context;
     this.format = format;
     this.maxPixelRatio = maxPixelRatio;
+    this.hdr = hdr;
+    this.sceneFormat = hdr ? HDR_FORMAT : format;
   }
 
   static async create(
@@ -91,6 +109,7 @@ export class GPUContext {
       context,
       format,
       options.maxPixelRatio ?? 2,
+      options.hdr ?? false,
     );
     ctx.resize();
     return ctx;
@@ -113,14 +132,25 @@ export class GPUContext {
 
     this.msaaTexture?.destroy();
     this.depthTexture?.destroy();
+    this.resolveTexture?.destroy();
+    this.resolveTexture = null;
 
     this.msaaTexture = this.device.createTexture({
       label: "msaa-color",
       size: [w, h],
-      format: this.format,
+      format: this.sceneFormat,
       sampleCount: SAMPLE_COUNT,
       usage: GPUTextureUsage.RENDER_ATTACHMENT,
     });
+
+    if (this.hdr) {
+      this.resolveTexture = this.device.createTexture({
+        label: "hdr-resolve",
+        size: [w, h],
+        format: HDR_FORMAT,
+        usage: GPUTextureUsage.RENDER_ATTACHMENT | GPUTextureUsage.TEXTURE_BINDING,
+      });
+    }
 
     this.depthTexture = this.device.createTexture({
       label: "depth",
@@ -137,13 +167,38 @@ export class GPUContext {
     return this.width / Math.max(1, this.height);
   }
 
-  /** MSAA colour attachment resolving into the current swapchain texture. */
+  /**
+   * MSAA colour attachment for the scene pass. Resolves into the offscreen HDR
+   * texture when `hdr` is set, otherwise straight into the swapchain.
+   */
   colorAttachment(clear: GPUColor): GPURenderPassColorAttachment {
+    const resolveTarget = this.hdr
+      ? this.resolveTexture!.createView()
+      : this.context.getCurrentTexture().createView();
+
     return {
       view: this.msaaTexture!.createView(),
-      resolveTarget: this.context.getCurrentTexture().createView(),
+      resolveTarget,
       clearValue: clear,
       loadOp: "clear",
+      storeOp: "store",
+    };
+  }
+
+  /** The resolved HDR scene, as input to the tonemap pass. HDR mode only. */
+  hdrView(): GPUTextureView {
+    if (!this.resolveTexture) {
+      throw new Error("hdrView() requires GPUContext created with { hdr: true }");
+    }
+    return this.resolveTexture.createView();
+  }
+
+  /** Swapchain attachment for the final fullscreen pass. */
+  swapchainAttachment(): GPURenderPassColorAttachment {
+    return {
+      view: this.context.getCurrentTexture().createView(),
+      loadOp: "clear",
+      clearValue: { r: 0, g: 0, b: 0, a: 1 },
       storeOp: "store",
     };
   }
@@ -160,8 +215,10 @@ export class GPUContext {
   destroy() {
     this.msaaTexture?.destroy();
     this.depthTexture?.destroy();
+    this.resolveTexture?.destroy();
     this.msaaTexture = null;
     this.depthTexture = null;
+    this.resolveTexture = null;
     this.device.destroy();
   }
 }

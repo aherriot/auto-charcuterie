@@ -42,8 +42,14 @@
   line-height: 1.65;
 }
 
-.cta {
+.links {
+  display: flex;
+  align-items: center;
+  gap: 22px;
   margin-top: 8px;
+}
+
+.cta {
   padding: 11px 22px;
   border: 1px solid #b08d4f;
   border-radius: 4px;
@@ -56,4 +62,17 @@
 
 .cta:hover {
   background: #2a2233;
+}
+
+.secondary {
+  color: #7d7688;
+  font-size: 14px;
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.secondary:hover {
+  color: #b9b1c4;
+  border-bottom-color: #4a4453;
 }

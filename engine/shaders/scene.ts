@@ -13,8 +13,11 @@ import { NOISE_WGSL } from "./noise";
 /** Matches `Frame` below and `FRAME_BYTES` in the renderer. */
 export const FRAME_BYTES = 224;
 
-/** Matches `Instance` below: mat4 model + vec4 albedo/roughness + vec4 material. */
-export const INSTANCE_BYTES = 96;
+/**
+ * Matches `Instance` below: mat4 model + vec4 albedo/roughness + vec4 material
+ * + vec4 extra.
+ */
+export const INSTANCE_BYTES = 112;
 
 export const SCENE_WGSL = /* wgsl */ `
 ${NOISE_WGSL}
@@ -35,6 +38,7 @@ struct Instance {
   model    : mat4x4f,
   albedo   : vec4f,   // rgb base tint, a base roughness
   material : vec4f,   // x metallic, y ambient occlusion, z material id, w seed
+  extra    : vec4f,   // x alpha, y rim strength, zw spare
 };
 
 @group(0) @binding(0) var<uniform> F : Frame;
@@ -210,6 +214,7 @@ struct Instance {
   model    : mat4x4f,
   albedo   : vec4f,
   material : vec4f,
+  extra    : vec4f,
 };
 
 @group(0) @binding(0) var<uniform> L : Light;

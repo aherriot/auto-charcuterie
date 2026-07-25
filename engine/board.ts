@@ -12,6 +12,7 @@ import type { BoardSnapshot } from "../game/snapshot";
 import { Director, type Remark } from "../game/judges/director";
 import { judge, type Judgement } from "../game/judges/index";
 import { initPhysics, PhysicsWorld } from "./physics/world";
+import { DropIndicator } from "./dropIndicator";
 import {
   BoardState,
   BOARD_HALF_X,
@@ -41,10 +42,24 @@ export class BoardScene {
   private fpsAccum = 0;
   private fpsFrames = 0;
 
+  private selectedFood: string | null = null;
+
   /** Food id to drop on the next board click. Null means clicks only orbit. */
-  selected: string | null = null;
+  get selected(): string | null {
+    return this.selectedFood;
+  }
+
+  set selected(id: string | null) {
+    this.selectedFood = id;
+    // Clear immediately rather than waiting for the next pointer move, so
+    // deselecting makes the indicator disappear at once.
+    if (!id) this.indicator?.set(null, null);
+  }
 
   private director = new Director({ seed: Math.floor(Math.random() * 1e9) });
+  private indicator!: DropIndicator;
+  /** Latest cursor position over the canvas, or null when it has left. */
+  private pointer: { x: number; y: number } | null = null;
 
   onStats?: (stats: BoardStats) => void;
   /** Fires when a judge has something to say. */
@@ -77,6 +92,7 @@ export class BoardScene {
     const scene = new BoardScene(renderer, physics, state);
 
     scene.buildBoard();
+    scene.indicator = new DropIndicator(renderer, BOARD_TOP, DROP_HEIGHT);
     scene.attachPlacement(canvas);
     scene.loop(performance.now());
     return scene;
@@ -121,22 +137,42 @@ export class BoardScene {
 
     canvas.addEventListener("pointermove", (e) => {
       if (Math.hypot(e.clientX - downX, e.clientY - downY) > 5) moved = true;
+      this.pointer = { x: e.clientX, y: e.clientY };
+    });
+
+    canvas.addEventListener("pointerleave", () => {
+      this.pointer = null;
     });
 
     canvas.addEventListener("pointerup", (e) => {
-      if (moved || !this.selected) return;
+      if (moved || !this.selectedFood) return;
 
-      // Intersect the release plane, so the item appears under the cursor at
-      // the height it's dropped from — physics decides where it ends up.
-      const hit = this.renderer.pickOnPlane(
-        e.clientX,
-        e.clientY,
-        BOARD_TOP + DROP_HEIGHT,
-      );
-      if (!hit) return;
+      const target = this.targetAt(e.clientX, e.clientY);
+      if (!target) return;
 
-      this.state.drop(this.selected, hit[0], hit[1]);
+      this.state.drop(this.selectedFood, target.x, target.z);
     });
+  }
+
+  /**
+   * Where the cursor points on the board.
+   *
+   * Intersects the **board surface**, not the release plane. Picking the
+   * release plane means the item falls to a point that isn't under the cursor —
+   * perspective puts those two places noticeably apart — so food lands where
+   * you weren't looking. Aiming at the board and releasing from directly above
+   * that point is what makes placement feel predictable.
+   */
+  private targetAt(clientX: number, clientY: number) {
+    const hit = this.renderer.pickOnPlane(clientX, clientY, BOARD_TOP);
+    if (!hit) return null;
+
+    const [x, z] = hit;
+    return {
+      x,
+      z,
+      onBoard: DropIndicator.isOnBoard(x, z, BOARD_HALF_X, BOARD_HALF_Z),
+    };
   }
 
   drop(foodId: string, x = 0, z = 0) {
@@ -165,6 +201,14 @@ export class BoardScene {
     this.last = now;
 
     this.state.update(dt);
+
+    this.indicator.set(
+      this.pointer && this.selectedFood
+        ? this.targetAt(this.pointer.x, this.pointer.y)
+        : null,
+      this.selectedFood,
+    );
+    this.indicator.update(dt);
 
     // The director needs a snapshot every frame to spot events. Building one is
     // cheap — it's a map over a few dozen items with no allocation beyond the

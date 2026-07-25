@@ -44,10 +44,11 @@ export default function BoardPage() {
         scene = s;
         sceneRef.current = s;
         s.onStats = setStats;
-        // Keep only the last few remarks — the feed is a running commentary,
-        // not a transcript.
+        // Keep a short tail — the feed is a running commentary, not a
+        // transcript. CSS hides the older entries on narrow screens, so the
+        // count here is the maximum a large display shows.
         s.onRemark = (remark) =>
-          setFeed((prev) => [...prev, remark].slice(-4));
+          setFeed((prev) => [...prev, remark].slice(-5));
       })
       .catch((e: unknown) => {
         if (!cancelled) setError(e instanceof Error ? e.message : String(e));
@@ -91,8 +92,8 @@ export default function BoardPage() {
         <h1 className={styles.title}>Auto&#8209;Charcuterie</h1>
         <p className={styles.hint}>
           {selected
-            ? "Click above the board to drop. Drag to orbit."
-            : "Pick something from the tray, then click above the board."}
+            ? "Aim with the ring, click to drop. Drag to orbit."
+            : "Pick something from the tray, then aim at the board."}
         </p>
       </header>
 

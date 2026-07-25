@@ -79,8 +79,13 @@ export function buildFoodMesh(id: MeshId, seed = 0): MeshData {
     case "figHalf": {
       // A teardrop squashed flat on the cut face: full height above, clipped
       // below, so it sits cut-side up and shows its interior.
-      const m = superellipsoid(0.085, 0.1, 0.085, 2.6, 22, 16);
-      return clipBelow(m, 0.0);
+      //
+      // Recentred afterwards. Clipping leaves the mesh spanning 0 → height
+      // rather than straddling the origin, and every collider is centred on the
+      // body origin — an un-recentred mesh sits half a fig off from its own
+      // collider.
+      const m = clipBelow(superellipsoid(0.085, 0.1, 0.085, 2.6, 22, 16), 0);
+      return recentreY(m);
     }
 
     case "cornichon": {
@@ -236,4 +241,27 @@ function clipBelow(mesh: MeshData, y: number): MeshData {
     }
   }
   return { vertices: v, indices: mesh.indices };
+}
+
+/**
+ * Shifts a mesh so its vertical bounds straddle the origin.
+ *
+ * Colliders are centred on the rigid body's origin, so a mesh that isn't
+ * centred renders offset from the shape that's actually colliding.
+ */
+function recentreY(mesh: MeshData): MeshData {
+  const v = mesh.vertices;
+  let min = Infinity;
+  let max = -Infinity;
+  for (let i = 1; i < v.length; i += 6) {
+    if (v[i] < min) min = v[i];
+    if (v[i] > max) max = v[i];
+  }
+
+  const shift = (min + max) / 2;
+  if (Math.abs(shift) < 1e-6) return mesh;
+
+  const out = v.slice() as Float32Array<ArrayBuffer>;
+  for (let i = 1; i < out.length; i += 6) out[i] -= shift;
+  return { vertices: out, indices: mesh.indices };
 }

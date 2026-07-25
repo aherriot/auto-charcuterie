@@ -274,6 +274,40 @@ export function loftedPolygon(
   return b.build();
 }
 
+/**
+ * Flat annulus lying in the XZ plane — the landing ring for drop indicators.
+ *
+ * Double-sided by construction (both faces emitted), since it's viewed from
+ * above and below as the camera orbits and a single-sided ring would vanish
+ * from low angles.
+ */
+export function ring(inner: number, outer: number, segments = 48): MeshData {
+  const b = new MeshBuilder();
+
+  const innerTop: number[] = [];
+  const outerTop: number[] = [];
+  const innerBot: number[] = [];
+  const outerBot: number[] = [];
+
+  for (let i = 0; i < segments; i++) {
+    const a = (i / segments) * Math.PI * 2;
+    const ca = Math.cos(a);
+    const sa = Math.sin(a);
+    innerTop.push(b.vertex(ca * inner, 0, sa * inner, 0, 1, 0));
+    outerTop.push(b.vertex(ca * outer, 0, sa * outer, 0, 1, 0));
+    innerBot.push(b.vertex(ca * inner, 0, sa * inner, 0, -1, 0));
+    outerBot.push(b.vertex(ca * outer, 0, sa * outer, 0, -1, 0));
+  }
+
+  for (let i = 0; i < segments; i++) {
+    const j = (i + 1) % segments;
+    b.quad(innerTop[j], innerTop[i], outerTop[i], outerTop[j]);
+    b.quad(outerBot[j], outerBot[i], innerBot[i], innerBot[j]);
+  }
+
+  return b.build();
+}
+
 /** Regular polygon outline, for crackers and the honeycomb slab. */
 export function polygonOutline(
   sides: number,

@@ -16,6 +16,7 @@ import { GPUContext, SAMPLE_COUNT } from "./gpu/device";
 import { OrbitCamera } from "./camera";
 import type { MeshData } from "./mesh/primitives";
 import { FRAME_BYTES, INSTANCE_BYTES, SCENE_WGSL, SHADOW_WGSL } from "./shaders/scene";
+import { OVERLAY_WGSL } from "./shaders/overlay";
 import { TONEMAP_WGSL } from "./shaders/tonemap";
 
 const SHADOW_SIZE = 2048;
@@ -42,6 +43,10 @@ export interface Material {
   ao?: number;
   /** Procedural material id — see MAT in engine/shaders/materials.ts. */
   materialId?: number;
+  /** Overlay pass only: 0–1 opacity. */
+  alpha?: number;
+  /** Overlay pass only: strength of the fresnel edge highlight. */
+  rim?: number;
 }
 
 export interface InstanceSpec {
@@ -72,6 +77,12 @@ interface MeshRecord {
   indexBuffer: GPUBuffer;
   indexCount: number;
   instances: InstanceSpec[];
+  /**
+   * Overlay meshes draw in a separate blended pass after the opaque one, and
+   * are excluded from the shadow map — a drop indicator casting a shadow would
+   * be absurd.
+   */
+  overlay: boolean;
 }
 
 export interface LightSettings {
@@ -120,6 +131,7 @@ export class SceneRenderer {
 
   private scenePipeline!: GPURenderPipeline;
   private shadowPipeline!: GPURenderPipeline;
+  private overlayPipeline!: GPURenderPipeline;
   private tonemapPipeline!: GPURenderPipeline;
 
   private frameBuffer!: GPUBuffer;
@@ -303,6 +315,50 @@ export class SceneRenderer {
       multisample: { count: SAMPLE_COUNT },
     });
 
+    const overlayModule = d.createShaderModule({ label: "overlay", code: OVERLAY_WGSL });
+    this.overlayPipeline = d.createRenderPipeline({
+      label: "overlay",
+      layout: d.createPipelineLayout({
+        bindGroupLayouts: [frameLayout, instanceLayout],
+      }),
+      vertex: { module: overlayModule, entryPoint: "vs", buffers: vertexBuffers },
+      fragment: {
+        module: overlayModule,
+        entryPoint: "fs",
+        targets: [
+          {
+            format: this.ctx.sceneFormat,
+            // Premultiplied alpha: the shader outputs colour already scaled by
+            // alpha, so src is added rather than multiplied again.
+            blend: {
+              color: {
+                srcFactor: "one",
+                dstFactor: "one-minus-src-alpha",
+                operation: "add",
+              },
+              alpha: {
+                srcFactor: "one",
+                dstFactor: "one-minus-src-alpha",
+                operation: "add",
+              },
+            },
+          },
+        ],
+      },
+      // Indicators are viewed from any angle as the camera orbits, so both
+      // faces draw.
+      primitive: { topology: "triangle-list", cullMode: "none" },
+      depthStencil: {
+        format: "depth24plus",
+        // Tested against the scene so food occludes the ghost correctly, but
+        // not written — otherwise overlapping translucent surfaces would cull
+        // each other and the ring would punch a hole in the ghost.
+        depthWriteEnabled: false,
+        depthCompare: "less",
+      },
+      multisample: { count: SAMPLE_COUNT },
+    });
+
     const shadowModule = d.createShaderModule({ label: "shadow", code: SHADOW_WGSL });
     this.shadowPipeline = d.createRenderPipeline({
       label: "shadow",
@@ -344,7 +400,7 @@ export class SceneRenderer {
 
   // --- content -------------------------------------------------------------
 
-  addMesh(mesh: MeshData): MeshHandle {
+  addMesh(mesh: MeshData, options: { overlay?: boolean } = {}): MeshHandle {
     const d = this.ctx.device;
     const vertexBuffer = d.createBuffer({
       size: mesh.vertices.byteLength,
@@ -363,6 +419,7 @@ export class SceneRenderer {
       indexBuffer,
       indexCount: mesh.indices.length,
       instances: [],
+      overlay: options.overlay ?? false,
     });
     return { id };
   }
@@ -410,6 +467,10 @@ export class SceneRenderer {
             inst.seed ?? 0,
           ],
           base + 20,
+        );
+        this.instanceData.set(
+          [inst.material.alpha ?? 1, inst.material.rim ?? 0, 0, 0],
+          base + 24,
         );
         cursor++;
       }
@@ -589,7 +650,8 @@ export class SceneRenderer {
     shadow.setBindGroup(0, this.shadowFrameBG);
     shadow.setBindGroup(1, this.instanceBG);
     for (const b of batches) {
-      if (b.count === 0) continue;
+      // Indicators are interface, not objects — they must not cast shadows.
+      if (b.count === 0 || b.mesh.overlay) continue;
       shadow.setVertexBuffer(0, b.mesh.vertexBuffer);
       shadow.setIndexBuffer(b.mesh.indexBuffer, "uint32");
       shadow.drawIndexed(b.mesh.indexCount, b.count, 0, 0, b.first);
@@ -606,11 +668,22 @@ export class SceneRenderer {
     forward.setBindGroup(0, this.frameBG);
     forward.setBindGroup(1, this.instanceBG);
     for (const b of batches) {
-      if (b.count === 0) continue;
+      if (b.count === 0 || b.mesh.overlay) continue;
       forward.setVertexBuffer(0, b.mesh.vertexBuffer);
       forward.setIndexBuffer(b.mesh.indexBuffer, "uint32");
       forward.drawIndexed(b.mesh.indexCount, b.count, 0, 0, b.first);
     }
+
+    // Overlays last, inside the same pass: they need the opaque depth buffer to
+    // be complete so food correctly occludes anything behind it.
+    forward.setPipeline(this.overlayPipeline);
+    for (const b of batches) {
+      if (b.count === 0 || !b.mesh.overlay) continue;
+      forward.setVertexBuffer(0, b.mesh.vertexBuffer);
+      forward.setIndexBuffer(b.mesh.indexBuffer, "uint32");
+      forward.drawIndexed(b.mesh.indexCount, b.count, 0, 0, b.first);
+    }
+
     forward.end();
 
     // 3 — tonemap

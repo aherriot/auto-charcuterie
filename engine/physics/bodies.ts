@@ -34,71 +34,128 @@ const PROFILES: Record<string, PhysicsProfile> = {
   carb: { density: 0.5, friction: 0.75, restitution: 0.12 },
 };
 
+/**
+ * Collider shapes as plain data.
+ *
+ * Declared separately from the Rapier construction so they can be checked
+ * against the meshes in Node without loading WASM. A collider that doesn't
+ * match its mesh is invisible to the typechecker and shows up only as strange
+ * physics — items tumbling, or sinking through the board — so it's worth
+ * asserting rather than eyeballing.
+ *
+ * `axis: "x"` means the shape's natural Y axis must be rotated onto X to match
+ * a mesh modelled lengthwise.
+ */
+export type ColliderSpec =
+  | { kind: "ball"; radius: number }
+  | { kind: "cuboid"; hx: number; hy: number; hz: number }
+  | { kind: "capsule"; halfHeight: number; radius: number; axis: "x" | "y" }
+  | { kind: "cylinder"; halfHeight: number; radius: number; axis: "x" | "y" }
+  /** Built from the mesh's own vertices, so it matches by construction. */
+  | { kind: "hull" };
+
+export const COLLIDERS: Record<MeshId, ColliderSpec> = {
+  // Thin flat discs. A cylinder matches far better than a box: salami rounds
+  // should be able to roll on their edge if they land that way.
+  salamiRound: { kind: "cylinder", halfHeight: 0.008, radius: 0.12, axis: "y" },
+  soppressataRound: { kind: "cylinder", halfHeight: 0.01, radius: 0.14, axis: "y" },
+
+  // Prosciutto is cloth in play; this collider covers the rigid fallback. The
+  // slice outline is elliptical, so a circle splits the difference between its
+  // long and short radii rather than circumscribing the whole thing — an
+  // over-sized disc would hold the slice visibly clear of its neighbours.
+  slice: { kind: "cylinder", halfHeight: 0.003, radius: 0.2, axis: "y" },
+
+  cracker: { kind: "cuboid", hx: 0.095, hy: 0.0055, hz: 0.095 },
+
+  goudaBlock: { kind: "cuboid", hx: 0.15, hy: 0.075, hz: 0.1 },
+  cheddarCube: { kind: "cuboid", hx: 0.075, hy: 0.075, hz: 0.075 },
+
+  // Wedges genuinely need their shape — a cheese wedge should be able to tip
+  // onto a face, and a box can't express that.
+  brieWedge: { kind: "hull" },
+  blueWedge: { kind: "hull" },
+
+  grape: { kind: "ball", radius: 0.05 },
+
+  // Flat-bottomed dome: a half-height cylinder sits the way a cut fig does.
+  figHalf: { kind: "cylinder", halfHeight: 0.05, radius: 0.085, axis: "y" },
+
+  // Capsules for anything long and round, aligned onto X to match the mesh.
+  cornichon: { kind: "capsule", halfHeight: 0.086, radius: 0.019, axis: "x" },
+  breadstick: { kind: "capsule", halfHeight: 0.285, radius: 0.015, axis: "x" },
+  olive: { kind: "capsule", halfHeight: 0.024, radius: 0.034, axis: "x" },
+
+  // Matches the swept teardrop: 0.055 long, 0.032 wide, 0.018 thick.
+  almond: { kind: "cuboid", hx: 0.055, hy: 0.018, hz: 0.032 },
+
+  // The curve is the point: a cashew should rock rather than sit flat.
+  cashew: { kind: "hull" },
+
+  honeycomb: { kind: "cuboid", hx: 0.14, hy: 0.025, hz: 0.14 },
+};
+
+/**
+ * Half-extents the collider occupies in mesh space, for comparison with the
+ * mesh's own bounding box. Null for hulls, which match by construction.
+ */
+export function colliderExtents(spec: ColliderSpec): [number, number, number] | null {
+  switch (spec.kind) {
+    case "ball":
+      return [spec.radius, spec.radius, spec.radius];
+    case "cuboid":
+      return [spec.hx, spec.hy, spec.hz];
+    case "capsule":
+    case "cylinder": {
+      const long = spec.halfHeight + (spec.kind === "capsule" ? spec.radius : 0);
+      return spec.axis === "x"
+        ? [long, spec.radius, spec.radius]
+        : [spec.radius, long, spec.radius];
+    }
+    case "hull":
+      return null;
+  }
+}
+
 /** Builds the collider for a food, seeded to match its mesh where a hull is used. */
 export function colliderFor(food: Food, seed = 0): RAPIER.ColliderDesc {
   const profile = PROFILES[food.category];
-  const desc = shapeFor(food.mesh, seed);
+  const spec = COLLIDERS[food.mesh];
+  const desc = descFor(spec, food.mesh, seed);
+
+  // Align the collider to the mesh *within* the body, not by rotating the body.
+  //
+  // Rapier's capsules and cylinders are built along Y; several foods are
+  // modelled along X. Rotating the rigid body to compensate also rotates the
+  // rendered mesh, since the renderer takes its transform from the body — the
+  // collider ends up lying flat while the mesh stands on end, so items tumble
+  // and appear to sink through the board. A collider-local rotation fixes the
+  // shape without touching the body's orientation.
+  if ((spec.kind === "capsule" || spec.kind === "cylinder") && spec.axis === "x") {
+    // -90° about Z maps the shape's Y axis onto X. Quaternion for angle theta
+    // about axis n is (n·sin(theta/2), cos(theta/2)).
+    const half = -Math.PI / 4;
+    desc.setRotation({ x: 0, y: 0, z: Math.sin(half), w: Math.cos(half) });
+  }
+
   return desc
     .setDensity(profile.density)
     .setFriction(profile.friction)
     .setRestitution(profile.restitution);
 }
 
-function shapeFor(mesh: MeshId, seed: number): RAPIER.ColliderDesc {
-  switch (mesh) {
-    // Thin flat discs. A cylinder matches far better than a box: salami rounds
-    // should be able to roll on their edge if they land that way.
-    case "salamiRound":
-      return RAPIER.ColliderDesc.cylinder(0.008, 0.115);
-    case "soppressataRound":
-      return RAPIER.ColliderDesc.cylinder(0.01, 0.13);
-
-    // Prosciutto is cloth in play; this collider only exists for tray previews
-    // and for the case where cloth is disabled.
-    case "slice":
-      return RAPIER.ColliderDesc.cylinder(0.003, 0.2);
-
-    case "cracker":
-      return RAPIER.ColliderDesc.cuboid(0.095, 0.0055, 0.095);
-
-    case "goudaBlock":
-      return RAPIER.ColliderDesc.cuboid(0.15, 0.075, 0.1);
-    case "cheddarCube":
-      return RAPIER.ColliderDesc.cuboid(0.075, 0.075, 0.075);
-
-    // Wedges genuinely need their shape — a cheese wedge should be able to tip
-    // onto a face, and a box can't express that.
-    case "brieWedge":
-    case "blueWedge":
+function descFor(spec: ColliderSpec, mesh: MeshId, seed: number): RAPIER.ColliderDesc {
+  switch (spec.kind) {
+    case "ball":
+      return RAPIER.ColliderDesc.ball(spec.radius);
+    case "cuboid":
+      return RAPIER.ColliderDesc.cuboid(spec.hx, spec.hy, spec.hz);
+    case "capsule":
+      return RAPIER.ColliderDesc.capsule(spec.halfHeight, spec.radius);
+    case "cylinder":
+      return RAPIER.ColliderDesc.cylinder(spec.halfHeight, spec.radius);
+    case "hull":
       return hullFor(mesh, seed);
-
-    case "grape":
-      return RAPIER.ColliderDesc.ball(0.05);
-
-    case "figHalf":
-      // Flat-bottomed dome: a half-height cylinder sits the way a cut fig does.
-      return RAPIER.ColliderDesc.cylinder(0.05, 0.082);
-
-    // Capsules for anything long and round. The mesh's long axis is X, and
-    // Rapier capsules run along Y, so these are rotated at spawn.
-    case "cornichon":
-      return RAPIER.ColliderDesc.capsule(0.086, 0.019);
-    case "breadstick":
-      return RAPIER.ColliderDesc.capsule(0.285, 0.015);
-
-    case "olive":
-      // Elongated along X — a capsule captures the roll better than a ball.
-      return RAPIER.ColliderDesc.capsule(0.024, 0.034);
-
-    case "almond":
-      return RAPIER.ColliderDesc.cuboid(0.052, 0.017, 0.03);
-
-    // The curve is the point: a cashew should rock rather than sit flat.
-    case "cashew":
-      return hullFor(mesh, seed);
-
-    case "honeycomb":
-      return RAPIER.ColliderDesc.cuboid(0.12, 0.025, 0.12);
   }
 }
 
@@ -133,22 +190,12 @@ function hullFor(mesh: MeshId, seed: number): RAPIER.ColliderDesc {
 }
 
 /**
- * Spawn rotation for foods whose collider axis differs from their mesh axis.
+ * Rotation to spawn a body with.
  *
- * Rapier capsules and cylinders are built along Y. Discs are modelled lying
- * flat (their axis already Y), but long items — cornichons, breadsticks, olives
- * — run along X in object space and must be rotated to match.
+ * Now always identity: collider alignment happens on the collider itself, and
+ * the drop rotation is a yaw applied by the caller. Kept as the single place
+ * to add per-food spawn poses if any food ever needs one.
  */
-export function spawnRotation(mesh: MeshId): [number, number, number, number] {
-  switch (mesh) {
-    case "cornichon":
-    case "breadstick":
-    case "olive": {
-      // -90° about Z maps the capsule's Y axis onto the mesh's X axis.
-      const h = -Math.PI / 4;
-      return [0, 0, Math.sin(h), Math.cos(h)];
-    }
-    default:
-      return [0, 0, 0, 1];
-  }
+export function spawnRotation(_mesh: MeshId): [number, number, number, number] {
+  return [0, 0, 0, 1];
 }

@@ -16,13 +16,15 @@ export function WebGPUGate({ reason }: { reason: string }): ReactNode {
   return (
     <main className={styles.gate}>
       <article className={styles.card}>
-        <p className={styles.eyebrow}>Guest list</p>
-        <h1 className={styles.title}>You&rsquo;re not on it</h1>
+        <p className={styles.eyebrow}>Dress code</p>
+        <h1 className={styles.title}>
+          Your browser isn&rsquo;t dressed for it
+        </h1>
         <p className={styles.rule} aria-hidden="true" />
 
         <p className={styles.body}>
-          The board is rendered with WebGPU and your browser doesn&rsquo;t speak
-          it. Kai says the lighting in here wouldn&rsquo;t have worked for you
+          The board is rendered with WebGPU and yours doesn&rsquo;t speak it.
+          Kai says the lighting in here wouldn&rsquo;t have worked for you
           anyway. Bartholomew has already stopped listening.
         </p>
 

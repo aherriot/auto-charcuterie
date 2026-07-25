@@ -17,12 +17,19 @@
   --paper-edge: #e3dac8;
   --ink: #241f1b;
   --ink-soft: #6b6055;
+  /* `--ink-faint` is a *table* colour, not a paper one: 6.1:1 on --table but
+     only 2.6:1 on --paper. Quiet text printed on the card takes --ink-soft
+     (5.0:1) instead. */
   --ink-faint: #9a8f80;
 
   /* Antique brass for rules and emphasis — deliberately olive and unpolished.
      A brighter gold reads as a badge or a reward, which this is not. */
   --brass: #9a7b3f;
   --brass-bright: #b89755;
+  /* Brass reads as brass at 3.3:1 on paper, which is fine for a rule but fails
+     AA for type. `--brass-ink` is the same metal taken down for *text on the
+     card* (4.8:1); rules, borders and brass on the table keep `--brass`. */
+  --brass-ink: #7a6231;
   --rule: #c9bea9;
 
   /* The single accent, used only where something is wrong or final: an

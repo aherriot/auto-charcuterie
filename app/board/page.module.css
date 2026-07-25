@@ -85,14 +85,12 @@
   font-size: 19px;
   font-weight: 400;
   letter-spacing: 0.26em;
-  /* Optical correction: letter-spacing adds trailing space that breaks centring. */
-  text-indent: 0.26em;
   text-transform: uppercase;
 }
 
 .menuNote {
   margin: 5px 0 0;
-  color: var(--ink-faint);
+  color: var(--ink-soft);
   font-size: 12px;
   font-style: italic;
 }
@@ -115,7 +113,7 @@
 
 .course h3 {
   margin: 0 0 6px;
-  color: var(--brass);
+  color: var(--brass-ink);
   font-family: var(--font-body);
   font-size: 10px;
   font-weight: 400;
@@ -166,7 +164,7 @@
 
 .tally {
   flex: 0 0 auto;
-  color: var(--brass);
+  color: var(--brass-ink);
   font-size: 12px;
   font-variant-numeric: tabular-nums;
 }
@@ -198,7 +196,7 @@
 }
 
 .dishOn .price {
-  color: var(--brass);
+  color: var(--brass-ink);
 }
 
 /* --- total and actions -------------------------------------------------- */
@@ -399,10 +397,9 @@
 
 .billEyebrow {
   margin: 0;
-  color: var(--ink-faint);
+  color: var(--ink-soft);
   font-size: 10px;
   letter-spacing: 0.3em;
-  text-indent: 0.3em;
   text-transform: uppercase;
 }
 
@@ -441,7 +438,7 @@
 
 .billQty {
   flex: 0 0 1.6em;
-  color: var(--ink-faint);
+  color: var(--ink-soft);
   font-variant-numeric: tabular-nums;
 }
 
@@ -476,10 +473,9 @@
 
 .scoresLabel {
   margin: 0;
-  color: var(--brass);
+  color: var(--brass-ink);
   font-size: 10px;
   letter-spacing: 0.3em;
-  text-indent: 0.3em;
   text-transform: uppercase;
 }
 
@@ -513,7 +509,7 @@
 
 .role {
   flex: 1 1 auto;
-  color: var(--ink-faint);
+  color: var(--ink-soft);
   font-size: 10px;
   letter-spacing: 0.16em;
   text-transform: uppercase;
@@ -557,7 +553,7 @@
 
 .credit {
   border-color: var(--brass);
-  color: var(--brass);
+  color: var(--brass-ink);
 }
 
 .billActions {

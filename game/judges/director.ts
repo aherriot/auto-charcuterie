@@ -66,8 +66,14 @@ interface Trigger {
   commit?: () => void;
 }
 
-/** Spend thresholds that get remarked on, once each. */
-const SPEND_MILESTONES = [15, 30, 50, 75];
+/**
+ * Spend thresholds that get remarked on, once each. Dollars.
+ *
+ * Prices are per piece, so a full board lands nearer $15 than $75; these are
+ * spaced to fire at roughly 4, 8, 15 and 23 items — the same pacing the old
+ * per-packet prices gave, which is what the line pool was written against.
+ */
+const SPEND_MILESTONES = [2.5, 5, 9, 14];
 
 export class Director {
   private cooldownMs: number;

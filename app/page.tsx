@@ -26,7 +26,7 @@ export default function Home() {
         </dl>
 
         <Link href="/board" className={styles.cta}>
-          Take a seat
+          Start plating
         </Link>
 
         <p className={styles.footnote}>

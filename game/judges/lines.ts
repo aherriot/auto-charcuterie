@@ -98,10 +98,10 @@ export const LINES: Line[] = [
   { judge: "kai", trigger: "clash-placed", weight: 0.7, text: "He's upset about something invisible again. Visually? Those two colours are working." },
 
   // --- spend --------------------------------------------------------------
-  { judge: "bartholomew", trigger: "spend-milestone", weight: 1.5, text: "£{spend}. And this is what we have to show for it." },
-  { judge: "bartholomew", trigger: "spend-milestone", weight: 1.2, text: "We have passed £{spend}. I do hope there is a plan." },
-  { judge: "kai", trigger: "spend-milestone", weight: 1.2, text: "£{spend} and honestly? It doesn't read as £{spend}. It needs to *read* expensive." },
-  { judge: "kai", trigger: "spend-milestone", weight: 1, text: "Money spent: £{spend}. Vibes purchased: unclear." },
+  { judge: "bartholomew", trigger: "spend-milestone", weight: 1.5, text: "${spend}. And this is what we have to show for it." },
+  { judge: "bartholomew", trigger: "spend-milestone", weight: 1.2, text: "We have passed ${spend}. I do hope there is a plan." },
+  { judge: "kai", trigger: "spend-milestone", weight: 1.2, text: "${spend} and honestly? It doesn't read as ${spend}. It needs to *read* expensive." },
+  { judge: "kai", trigger: "spend-milestone", weight: 1, text: "Money spent: ${spend}. Vibes purchased: unclear." },
 
   // --- board state --------------------------------------------------------
   { judge: "kai", trigger: "board-empty-ish", weight: 1.4, text: "There is so much wood showing. So much. It's giving unfinished." },

@@ -99,7 +99,7 @@ export default function CatalogPage() {
               style={{ transform: `translate(-50%, 0) translate(${x}px, ${y}px)` }}
             >
               {food.shortName}
-              <em>£{food.price.toFixed(2)}</em>
+              <em>${food.price.toFixed(2)}</em>
             </span>
           ))}
         </div>
@@ -131,7 +131,7 @@ export default function CatalogPage() {
               {CATALOG.filter((f) => f.category === c).map((f) => (
                 <li key={f.id}>
                   <span>{f.name}</span>
-                  <em>£{f.price.toFixed(2)}</em>
+                  <em>${f.price.toFixed(2)}</em>
                 </li>
               ))}
             </ul>

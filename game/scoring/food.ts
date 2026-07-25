@@ -198,10 +198,10 @@ function collectValue(
     points,
     note:
       quality > 0.72
-        ? `£${spend.toFixed(2)} spent, and spent well`
+        ? `$${spend.toFixed(2)} spent, and spent well`
         : quality < 0.38
-          ? `£${spend.toFixed(2)} on that selection`
-          : `£${spend.toFixed(2)}, unremarkably allocated`,
+          ? `$${spend.toFixed(2)} on that selection`
+          : `$${spend.toFixed(2)}, unremarkably allocated`,
   });
 }
 

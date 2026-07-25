@@ -393,6 +393,7 @@
 }
 
 .billHead {
+  margin-bottom: 20px;
   text-align: center;
 }
 
@@ -405,16 +406,28 @@
   text-transform: uppercase;
 }
 
-.billHead h2 {
-  margin: 8px 0 20px;
+/* One per column, so the two halves are labelled rather than running together. */
+.billTitle {
+  margin: 0 0 14px;
   font-family: var(--font-display);
-  font-size: 34px;
+  font-size: 28px;
   font-weight: 400;
   letter-spacing: 0.02em;
+  text-align: center;
 }
 
-.billItems {
-  padding-top: 14px;
+/*
+ * Single column by default, in DOM order: judgement, then charges. The wide
+ * layout below turns this into two columns — see .billBody in the media query.
+ */
+.billBody {
+  display: grid;
+  gap: 24px;
+}
+
+.assessment,
+.charges {
+  padding-top: 16px;
   border-top: 1px solid var(--rule);
 }
 
@@ -457,7 +470,7 @@
 /* --- the assessment ------------------------------------------------------ */
 
 .scores {
-  margin: 26px 0 4px;
+  margin: 0 0 4px;
   text-align: center;
 }
 
@@ -685,6 +698,24 @@
 
   .menu {
     width: 318px;
+  }
+}
+
+/* Once the card can be wide enough for two readable measures, the judgement
+   sits beside the charges instead of pushing them off the bottom. The judgement
+   column is the wider of the two — it is prose, the charges are a list. */
+@media (min-width: 1000px) {
+  .billWrap {
+    width: min(880px, 100%);
+  }
+
+  .bill {
+    padding: 34px 40px calc(30px + var(--tooth));
+  }
+
+  .billBody {
+    grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+    gap: 36px;
   }
 }
 

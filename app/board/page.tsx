@@ -154,7 +154,7 @@ export default function BoardPage() {
           <div className={styles.total}>
             <span>Total</span>
             <span className={styles.leader} aria-hidden="true" />
-            <span className={styles.totalPrice}>£{stats.spend.toFixed(2)}</span>
+            <span className={styles.totalPrice}>${stats.spend.toFixed(2)}</span>
           </div>
 
           <div className={styles.menuActions}>
@@ -198,44 +198,66 @@ export default function BoardPage() {
             <article className={styles.bill}>
               <header className={styles.billHead}>
                 <p className={styles.billEyebrow}>Auto&#8209;Charcuterie</p>
-                <h2>The bill</h2>
               </header>
 
-              <div className={styles.billItems}>
-                {billLines.map(({ food, count, line }) => (
-                  <div key={food.id} className={styles.billRow}>
-                    <span className={styles.billQty}>{count}</span>
-                    <span className={styles.billName}>{food.name}</span>
-                    <span className={styles.leader} aria-hidden="true" />
-                    <span className={styles.billPrice}>{line.toFixed(2)}</span>
+              {/*
+                The judgement comes first in the DOM so that a single-column
+                card reads verdict-then-charges; the wide layout puts the two
+                side by side without reordering anything.
+              */}
+              <div className={styles.billBody}>
+                <div className={styles.assessment}>
+                  <h2 className={styles.billTitle}>The judges</h2>
+
+                  <div className={styles.scores}>
+                    <p className={styles.scoresLabel}>Assessed</p>
+                    <p className={styles.overall}>
+                      {Math.round(judgement.overall)}
+                    </p>
                   </div>
-                ))}
-              </div>
 
-              <div className={styles.billTotal}>
-                <span>Total</span>
-                <span className={styles.leader} aria-hidden="true" />
-                <span>£{stats.spend.toFixed(2)}</span>
-              </div>
+                  {[judgement.kai, judgement.bartholomew].map((v) => (
+                    <section key={v.judge} className={styles.verdict}>
+                      <header>
+                        <h3>{JUDGE_NAMES[v.judge]}</h3>
+                        <span className={styles.role}>
+                          {JUDGE_TITLES[v.judge]}
+                        </span>
+                        <span className={styles.mark}>{Math.round(v.score)}</span>
+                      </header>
+                      <p className={styles.headline}>{v.headline}</p>
+                      <p className={styles.body}>{v.body}</p>
+                      {v.criticism && (
+                        <p className={styles.against}>{v.criticism}.</p>
+                      )}
+                      {v.credit && <p className={styles.credit}>{v.credit}.</p>}
+                    </section>
+                  ))}
+                </div>
 
-              <div className={styles.scores}>
-                <p className={styles.scoresLabel}>Assessed</p>
-                <p className={styles.overall}>{Math.round(judgement.overall)}</p>
-              </div>
+                <div className={styles.charges}>
+                  <h2 className={styles.billTitle}>The bill</h2>
 
-              {[judgement.kai, judgement.bartholomew].map((v) => (
-                <section key={v.judge} className={styles.verdict}>
-                  <header>
-                    <h3>{JUDGE_NAMES[v.judge]}</h3>
-                    <span className={styles.role}>{JUDGE_TITLES[v.judge]}</span>
-                    <span className={styles.mark}>{Math.round(v.score)}</span>
-                  </header>
-                  <p className={styles.headline}>{v.headline}</p>
-                  <p className={styles.body}>{v.body}</p>
-                  {v.criticism && <p className={styles.against}>{v.criticism}.</p>}
-                  {v.credit && <p className={styles.credit}>{v.credit}.</p>}
-                </section>
-              ))}
+                  <div className={styles.billItems}>
+                    {billLines.map(({ food, count, line }) => (
+                      <div key={food.id} className={styles.billRow}>
+                        <span className={styles.billQty}>{count}</span>
+                        <span className={styles.billName}>{food.name}</span>
+                        <span className={styles.leader} aria-hidden="true" />
+                        <span className={styles.billPrice}>
+                          {line.toFixed(2)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className={styles.billTotal}>
+                    <span>Total</span>
+                    <span className={styles.leader} aria-hidden="true" />
+                    <span>${stats.spend.toFixed(2)}</span>
+                  </div>
+                </div>
+              </div>
 
               <div className={styles.billActions}>
                 <button onClick={() => setJudgement(null)} className={styles.keep}>

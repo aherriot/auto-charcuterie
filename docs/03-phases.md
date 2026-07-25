@@ -129,7 +129,20 @@ holds 60fps.
 
 ---
 
-## Phase 4 — Cloth slices in the real app
+## Phase 4 — Cloth slices in the real app *(deferred)*
+
+**Skipped for now, by decision on 2026-07-24.** The Phase 0 spike proved the
+approach works, so this is a scheduling choice rather than a technical retreat.
+
+Consequence: prosciutto is still flagged `simulation: "cloth"` in the catalogue,
+but with no cloth in the board scene it uses the thin-cylinder collider defined
+in `engine/physics/bodies.ts`. It drops and lands correctly — it simply lies
+flat instead of draping. Nothing else depends on cloth, and the solver remains
+validated and runnable at `/spike/cloth`.
+
+<details>
+<summary>Original plan, for when this is picked back up</summary>
+
 
 Promote the Phase 0 solver into `engine/cloth/`.
 
@@ -143,6 +156,8 @@ The centroid/AABB reduction pass described in
 
 **Verify:** prosciutto dropped over a pile of olives drapes convincingly;
 dropped half off the edge, it folds over the rim.
+
+</details>
 
 ---
 

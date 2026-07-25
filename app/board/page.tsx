@@ -4,6 +4,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { BoardScene, type BoardStats } from "@/engine/board";
 import { CATALOG, CATEGORY_LABELS, CATEGORY_ORDER } from "@/game/catalog";
+import type { Remark } from "@/game/judges/director";
+import type { Judgement } from "@/game/judges/index";
+import { JUDGE_NAMES, JUDGE_TITLES } from "@/game/judges/lines";
 import { WebGPUGate } from "../components/WebGPUGate";
 import styles from "./page.module.css";
 
@@ -20,6 +23,8 @@ export default function BoardPage() {
   });
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
+  const [feed, setFeed] = useState<Remark[]>([]);
+  const [judgement, setJudgement] = useState<Judgement | null>(null);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -39,6 +44,10 @@ export default function BoardPage() {
         scene = s;
         sceneRef.current = s;
         s.onStats = setStats;
+        // Keep only the last few remarks — the feed is a running commentary,
+        // not a transcript.
+        s.onRemark = (remark) =>
+          setFeed((prev) => [...prev, remark].slice(-4));
       })
       .catch((e: unknown) => {
         if (!cancelled) setError(e instanceof Error ? e.message : String(e));
@@ -61,6 +70,14 @@ export default function BoardPage() {
 
   const clear = useCallback(() => {
     sceneRef.current?.clear();
+    setFeed([]);
+    setJudgement(null);
+  }, []);
+
+  const serve = useCallback(() => {
+    const scene = sceneRef.current;
+    if (!scene) return;
+    setJudgement(scene.judge());
   }, []);
 
   if (error) return <WebGPUGate reason={error} />;
@@ -70,7 +87,7 @@ export default function BoardPage() {
       <canvas ref={canvasRef} className={styles.canvas} />
 
       <header className={styles.overlay}>
-        <p className={styles.eyebrow}>Phase 3 · physics &amp; placement</p>
+        <p className={styles.eyebrow}>Phase 5 · judges &amp; scoring</p>
         <h1 className={styles.title}>Auto&#8209;Charcuterie</h1>
         <p className={styles.hint}>
           {selected
@@ -117,7 +134,61 @@ export default function BoardPage() {
           <span>Total</span>
           <em>£{stats.spend.toFixed(2)}</em>
         </div>
+
+        <button
+          onClick={serve}
+          className={styles.serve}
+          disabled={stats.items === 0}
+        >
+          Serve
+        </button>
       </aside>
+
+      {feed.length > 0 && !judgement && (
+        <div className={styles.feed}>
+          {feed.map((r) => (
+            <p
+              key={`${r.at}-${r.text}`}
+              className={r.judge === "kai" ? styles.kai : styles.bart}
+            >
+              <strong>{JUDGE_NAMES[r.judge]}</strong>
+              {r.text}
+            </p>
+          ))}
+        </div>
+      )}
+
+      {judgement && (
+        <div className={styles.results} role="dialog" aria-label="Judgement">
+          <div className={styles.card}>
+            <p className={styles.cardEyebrow}>The verdict</p>
+            <p className={styles.overall}>{Math.round(judgement.overall)}</p>
+
+            {[judgement.kai, judgement.bartholomew].map((v) => (
+              <section key={v.judge} className={styles.verdict}>
+                <header>
+                  <h3>{JUDGE_NAMES[v.judge]}</h3>
+                  <span className={styles.role}>{JUDGE_TITLES[v.judge]}</span>
+                  <em>{Math.round(v.score)}</em>
+                </header>
+                <h4>{v.headline}</h4>
+                <p>{v.body}</p>
+                {v.criticism && <p className={styles.criticism}>{v.criticism}.</p>}
+                {v.credit && <p className={styles.credit}>{v.credit}.</p>}
+              </section>
+            ))}
+
+            <div className={styles.cardActions}>
+              <button onClick={() => setJudgement(null)} className={styles.secondary}>
+                Keep building
+              </button>
+              <button onClick={clear} className={styles.primary}>
+                Start again
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <footer className={styles.footer}>
         <span className={stats.fps < 55 ? styles.bad : styles.good}>

@@ -177,6 +177,236 @@
   font-variant-numeric: tabular-nums;
 }
 
+.serve {
+  position: sticky;
+  bottom: 0;
+  width: 100%;
+  margin: 0 0 14px;
+  padding: 11px;
+  border: 1px solid #b08d4f;
+  border-radius: 4px;
+  background: #2a2233;
+  color: #f0d9a8;
+  font-family: inherit;
+  font-size: 15px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.serve:hover:not(:disabled) {
+  background: #3a2f45;
+}
+
+.serve:disabled {
+  border-color: #322d3a;
+  background: transparent;
+  color: #4a4453;
+  cursor: not-allowed;
+}
+
+/* --- judge feed --------------------------------------------------------- */
+
+.feed {
+  position: absolute;
+  left: 30px;
+  bottom: 58px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  max-width: 44ch;
+  pointer-events: none;
+}
+
+.feed p {
+  margin: 0;
+  padding: 9px 13px;
+  border-left: 2px solid;
+  border-radius: 0 5px 5px 0;
+  background: rgb(12 11 15 / 0.82);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 14px;
+  line-height: 1.5;
+  backdrop-filter: blur(8px);
+  /* Newest line arrives at the bottom; the rise reads as "just said". */
+  animation: rise 0.32s ease-out;
+}
+
+.feed strong {
+  display: block;
+  margin-bottom: 2px;
+  font: 600 9px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.kai {
+  border-color: #c96f9c;
+  color: #e8dced;
+}
+
+.kai strong { color: #c96f9c; }
+
+.bart {
+  border-color: #7a9e6b;
+  color: #dfe6da;
+}
+
+.bart strong { color: #7a9e6b; }
+
+@keyframes rise {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .feed p { animation: none; }
+}
+
+/* --- results card ------------------------------------------------------- */
+
+.results {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgb(6 5 8 / 0.72);
+  backdrop-filter: blur(6px);
+}
+
+.card {
+  width: min(520px, 100%);
+  max-height: 88dvh;
+  overflow-y: auto;
+  padding: 30px 34px 26px;
+  border: 1px solid #3a3442;
+  border-radius: 8px;
+  background: #14121a;
+  font-family: Georgia, "Times New Roman", serif;
+  text-align: center;
+}
+
+.cardEyebrow {
+  margin: 0;
+  color: #6d6678;
+  font: 10px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+}
+
+.overall {
+  margin: 8px 0 22px;
+  color: #f0d9a8;
+  font-size: 68px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.verdict {
+  margin-top: 20px;
+  padding-top: 18px;
+  border-top: 1px solid #2a2630;
+  text-align: left;
+}
+
+.verdict header {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.verdict h3 {
+  margin: 0;
+  color: #e8e4de;
+  font-size: 17px;
+  font-weight: 400;
+}
+
+.role {
+  flex: 1 1 auto;
+  color: #6d6678;
+  font: 10px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.verdict header em {
+  color: #d9b978;
+  font-size: 22px;
+  font-style: normal;
+  font-variant-numeric: tabular-nums;
+}
+
+.verdict h4 {
+  margin: 0 0 6px;
+  color: #f0d9a8;
+  font-size: 16px;
+  font-weight: 400;
+  font-style: italic;
+}
+
+.verdict p {
+  margin: 0;
+  color: #b9b1c4;
+  font-size: 14px;
+  line-height: 1.62;
+}
+
+.criticism,
+.credit {
+  margin-top: 8px !important;
+  padding-left: 11px;
+  border-left: 2px solid;
+  font-size: 13px !important;
+}
+
+.criticism {
+  border-color: #a05a4a;
+  color: #d2a294 !important;
+}
+
+.credit {
+  border-color: #5f8a52;
+  color: #a9c49e !important;
+}
+
+.cardActions {
+  display: flex;
+  gap: 10px;
+  margin-top: 26px;
+}
+
+.primary,
+.secondary {
+  flex: 1 1 0;
+  padding: 10px;
+  border-radius: 4px;
+  font-family: inherit;
+  font-size: 14px;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+}
+
+.primary {
+  border: 1px solid #b08d4f;
+  background: #2a2233;
+  color: #f0d9a8;
+}
+
+.primary:hover { background: #3a2f45; }
+
+.secondary {
+  border: 1px solid #3a3442;
+  background: transparent;
+  color: #9a93a5;
+}
+
+.secondary:hover { color: #e8e4de; }
+
 /* --- footer ------------------------------------------------------------- */
 
 .footer {
@@ -215,5 +445,12 @@
   }
   .footer {
     display: none;
+  }
+  .feed {
+    left: 12px;
+    right: 12px;
+    bottom: auto;
+    top: 130px;
+    max-width: none;
   }
 }

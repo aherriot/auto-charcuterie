@@ -9,6 +9,8 @@ import { SceneRenderer } from "./scene";
 import { roundedBox } from "./mesh/primitives";
 import { MaterialId } from "../game/catalog";
 import type { BoardSnapshot } from "../game/snapshot";
+import { Director, type Remark } from "../game/judges/director";
+import { judge, type Judgement } from "../game/judges/index";
 import { initPhysics, PhysicsWorld } from "./physics/world";
 import {
   BoardState,
@@ -42,7 +44,11 @@ export class BoardScene {
   /** Food id to drop on the next board click. Null means clicks only orbit. */
   selected: string | null = null;
 
+  private director = new Director({ seed: Math.floor(Math.random() * 1e9) });
+
   onStats?: (stats: BoardStats) => void;
+  /** Fires when a judge has something to say. */
+  onRemark?: (remark: Remark) => void;
 
   private constructor(
     renderer: SceneRenderer,
@@ -139,10 +145,16 @@ export class BoardScene {
 
   clear() {
     this.state.clear();
+    this.director.reset();
   }
 
   snapshot(): BoardSnapshot {
     return this.state.snapshot();
+  }
+
+  /** Runs both scorers and returns the full verdict. */
+  judge(): Judgement {
+    return judge(this.state.snapshot());
   }
 
   private loop = (now: number) => {
@@ -153,6 +165,13 @@ export class BoardScene {
     this.last = now;
 
     this.state.update(dt);
+
+    // The director needs a snapshot every frame to spot events. Building one is
+    // cheap — it's a map over a few dozen items with no allocation beyond the
+    // array — and it keeps the judges reacting within a frame of something
+    // happening rather than on a polling interval.
+    const remark = this.director.update(dt, this.state.snapshot());
+    if (remark) this.onRemark?.(remark);
 
     this.fpsAccum += dt;
     this.fpsFrames++;

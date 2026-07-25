@@ -73,6 +73,7 @@
 }
 
 .menuHead {
+  position: relative;
   flex: 0 0 auto;
   padding: 20px 22px 14px;
   border-bottom: 1px solid var(--rule);
@@ -95,8 +96,131 @@
   font-style: italic;
 }
 
+/*
+ * The collapse control. Hidden by default: the tall card on a wide screen has
+ * nothing to collapse for. The narrow layout below reveals it.
+ */
+.collapse {
+  display: none;
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  transform: translateY(-50%);
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: none;
+  background: none;
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+
+/* Drawn rather than typed, so it can rotate between the two states. */
+.chevron {
+  width: 9px;
+  height: 9px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  /* Points down when the card is open: this closes it. */
+  transform: translateY(-2px) rotate(45deg);
+  transition: transform 0.22s ease;
+}
+
+.menu[data-open="false"] .chevron {
+  transform: translateY(2px) rotate(-135deg);
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/*
+ * Scroll frame.
+ *
+ * The fades are the affordance: paper that dissolves at an edge reads as paper
+ * with more behind it. They are pseudo-elements of this wrapper, not of the
+ * scroller, so they hold their position while the list moves under them.
+ */
+.menuScroll {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+}
+
+.menuScroll::before,
+.menuScroll::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 30px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.18s ease;
+}
+
+.menuScroll::before {
+  top: 0;
+  background: linear-gradient(var(--paper), rgb(0 0 0 / 0));
+}
+
+.menuScroll::after {
+  bottom: 0;
+  background: linear-gradient(rgb(0 0 0 / 0), var(--paper));
+}
+
+.menu[data-more-above="true"] .menuScroll::before,
+.menu[data-more-below="true"] .menuScroll::after {
+  opacity: 1;
+}
+
+/* Sits in the fade at the foot of the list, in the brass used for labels. */
+.moreCue {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 3px;
+  margin: 0;
+  color: var(--brass-ink);
+  font-size: 9px;
+  letter-spacing: 0.24em;
+  text-align: center;
+  text-transform: uppercase;
+  pointer-events: none;
+  animation: nudge 1.9s ease-in-out infinite;
+}
+
+.moreCue::after {
+  content: " ▾";
+  letter-spacing: 0;
+}
+
+@keyframes nudge {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(2px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .moreCue {
+    animation: none;
+  }
+}
+
 .menuBody {
   flex: 1 1 auto;
+  min-height: 0;
   overflow-y: auto;
   /* Stops a flick past the end of the list from rubber-banding the whole page
      behind the card. */
@@ -784,6 +908,35 @@
     bottom: max(10px, env(safe-area-inset-bottom));
     width: auto;
     max-height: 46dvh;
+  }
+
+  /*
+   * Collapsed, the card keeps its head — the choice, the total and the two
+   * buttons — and gives the list's share of the screen back to the board. The
+   * head shrinks a little too, since it is now the whole card.
+   */
+  .menu[data-open="false"] .menuScroll {
+    display: none;
+  }
+
+  .menu[data-open="false"] .menuHead {
+    padding: 13px 22px 11px;
+    border-bottom: none;
+  }
+
+  .collapse {
+    display: flex;
+  }
+
+  /* Keeps the chevron clear of a long dish name in the collapsed head. */
+  .menuHead h2,
+  .menuNote {
+    padding: 0 40px;
+  }
+
+  /* Room under the last row for the fade and the cue to sit in. */
+  .menuBody {
+    padding-bottom: 26px;
   }
 
   .masthead {

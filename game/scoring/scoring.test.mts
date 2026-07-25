@@ -22,6 +22,7 @@ import { scoreAesthetics } from "./aesthetics";
 import { scoreFood } from "./food";
 import { pairingFor, PAIRINGS, PAIRING_RADIUS } from "./pairings";
 import { judge } from "../judges/index";
+import { CATALOG } from "../catalog";
 
 describe("pairing matrix", () => {
   it("is symmetric", () => {
@@ -283,5 +284,44 @@ describe("judgement", () => {
     const result = judge(emptyBoard());
     assert.equal(result.kai.credit, null);
     assert.equal(result.overall, 0);
+  });
+
+  it("judges the same board the same way every time", () => {
+    // Pressing Serve twice on an unchanged board must not change its mind —
+    // that reads as a bug, not as variety.
+    const board = goodBoard();
+    const a = judge(board);
+    const b = judge(board);
+    assert.equal(a.kai.headline, b.kai.headline);
+    assert.equal(a.bartholomew.body, b.bartholomew.body);
+  });
+
+  it("varies the phrasing across boards that score alike", () => {
+    // Guards the hash behind the variant choice. It is easy to write one that
+    // looks fine and quietly returns the same index every time — the first
+    // attempt here reached only two of every four phrasings, because FNV's low
+    // bits are weak and the modulo is small.
+    const kai = new Set<string>();
+    const bart = new Set<string>();
+
+    for (let s = 0; s < 60; s++) {
+      const n = 3 + (s % 9);
+      const items = Array.from({ length: n }, (_, i) =>
+        place(
+          CATALOG[(s * 7 + i * 5) % CATALOG.length].id,
+          -0.8 + ((i * 13 + s) % 9) * 0.2,
+          -0.6 + ((i * 7 + s) % 5) * 0.3,
+        ),
+      );
+      const result = judge(boardOf(items));
+      kai.add(result.kai.headline);
+      bart.add(result.bartholomew.headline);
+    }
+
+    assert.ok(kai.size >= 4, `Kai only ever said ${kai.size} different things`);
+    assert.ok(
+      bart.size >= 4,
+      `Bartholomew only ever said ${bart.size} different things`,
+    );
   });
 });

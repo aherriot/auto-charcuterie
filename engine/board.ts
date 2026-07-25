@@ -121,38 +121,77 @@ export class BoardScene {
   }
 
   /**
-   * Click-to-drop.
+   * Tap-to-drop.
    *
    * Bound to pointerup and suppressed when the pointer moved, otherwise every
    * camera drag would fling food onto the board on release.
    */
   private attachPlacement(canvas: HTMLCanvasElement) {
+    const active = new Set<number>();
+    /** The pointer allowed to place, if the gesture is still a candidate tap. */
+    let placing: number | null = null;
     let downX = 0;
     let downY = 0;
     let moved = false;
 
+    const release = (e: PointerEvent) => {
+      active.delete(e.pointerId);
+      if (placing === e.pointerId) placing = null;
+      // A finger leaves nothing behind when it lifts, so the ring goes with it.
+      // A mouse carries on pointing at the board after the click.
+      if (e.pointerType !== "mouse") this.pointer = null;
+    };
+
     canvas.addEventListener("pointerdown", (e) => {
+      active.add(e.pointerId);
+
+      // A second finger means the gesture is a pinch, not a tap. Placement has
+      // to be abandoned for the whole gesture rather than just ignored for this
+      // pointer: both fingers still send pointerup, and whichever lifts last
+      // would otherwise drop food at the end of every zoom.
+      if (active.size > 1) {
+        placing = null;
+        this.pointer = null;
+        return;
+      }
+
+      placing = e.pointerId;
       downX = e.clientX;
       downY = e.clientY;
       moved = false;
-    });
-
-    canvas.addEventListener("pointermove", (e) => {
-      if (Math.hypot(e.clientX - downX, e.clientY - downY) > 5) moved = true;
+      // Touch has no hover, so a finger going down is the earliest the ring can
+      // appear. Showing it here is what lets you see the aim before committing.
       this.pointer = { x: e.clientX, y: e.clientY };
     });
 
-    canvas.addEventListener("pointerleave", () => {
-      this.pointer = null;
+    canvas.addEventListener("pointermove", (e) => {
+      if (active.size > 1) return;
+      this.pointer = { x: e.clientX, y: e.clientY };
+      if (e.pointerId !== placing) return;
+
+      // A mouse is held still by a hand resting on a desk; a finger is not.
+      // Five pixels of slop reads a deliberate iPad tap as a drag and swallows
+      // the placement.
+      const slop = e.pointerType === "mouse" ? 5 : 14;
+      if (Math.hypot(e.clientX - downX, e.clientY - downY) > slop) moved = true;
     });
 
     canvas.addEventListener("pointerup", (e) => {
-      if (moved || !this.selectedFood) return;
+      const food = this.selectedFood;
+      const placed = placing === e.pointerId && !moved && food !== null;
+      release(e);
+      if (!placed || !food) return;
 
       const target = this.targetAt(e.clientX, e.clientY);
       if (!target) return;
 
-      this.state.drop(this.selectedFood, target.x, target.z);
+      this.state.drop(food, target.x, target.z);
+    });
+
+    canvas.addEventListener("pointercancel", release);
+
+    canvas.addEventListener("pointerleave", (e) => {
+      if (e.pointerType === "mouse") this.pointer = null;
     });
   }
 

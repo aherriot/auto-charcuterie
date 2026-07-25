@@ -71,8 +71,13 @@ export class OrbitCamera {
   }
 
   zoom(delta: number) {
+    this.zoomBy(Math.exp(delta * 0.0012));
+  }
+
+  /** Scales the orbit distance directly. Pinch is naturally proportional. */
+  zoomBy(factor: number) {
     this.distance = clamp(
-      this.distance * Math.exp(delta * 0.0012),
+      this.distance * factor,
       this.minDistance,
       this.maxDistance,
     );
@@ -109,9 +114,12 @@ export class OrbitCamera {
 
       if (active.size === 2) {
         const next = spread(active);
-        if (pinchDistance > 0) {
-          // Pinch apart moves the camera closer, matching the wheel convention.
-          this.zoom((pinchDistance - next) * 6);
+        if (pinchDistance > 0 && next > 0) {
+          // Ratio rather than difference. The same finger separation should
+          // mean the same zoom whether the fingers started 40px or 400px
+          // apart, and a difference-based pinch is unusably twitchy close in.
+          // Fingers apart divides the distance, which moves the camera closer.
+          this.zoomBy(pinchDistance / next);
         }
         pinchDistance = next;
       }

@@ -1,6 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import Link from "next/link";
 import { BoardScene, type BoardStats } from "@/engine/board";
 import { CATALOG, CATEGORY_LABELS, CATEGORY_ORDER } from "@/game/catalog";
@@ -19,6 +26,14 @@ const EMPTY_STATS: BoardStats = {
   counts: {},
 };
 
+const COARSE_POINTER = "(pointer: coarse)";
+
+function subscribeCoarse(onChange: () => void) {
+  const mq = window.matchMedia(COARSE_POINTER);
+  mq.addEventListener("change", onChange);
+  return () => mq.removeEventListener("change", onChange);
+}
+
 export default function BoardPage() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const sceneRef = useRef<BoardScene | null>(null);
@@ -28,6 +43,14 @@ export default function BoardPage() {
   const [selected, setSelected] = useState<string | null>(null);
   const [feed, setFeed] = useState<Remark[]>([]);
   const [judgement, setJudgement] = useState<Judgement | null>(null);
+  // Only picks the verb in the hint; nothing is laid out from it. Subscribing
+  // rather than reading once keeps it right when an iPad gains a trackpad,
+  // which flips the pointer to fine mid-session.
+  const touch = useSyncExternalStore(
+    subscribeCoarse,
+    () => window.matchMedia(COARSE_POINTER).matches,
+    () => false,
+  );
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -104,7 +127,9 @@ export default function BoardPage() {
         <h1 className={styles.title}>Auto&#8209;Charcuterie</h1>
         <p className={styles.hint}>
           {selected
-            ? "Aim with the ring, click to drop. Drag to orbit."
+            ? touch
+              ? "Tap the board to drop. Drag to orbit, pinch to zoom."
+              : "Aim with the ring, click to drop. Drag to orbit."
             : "Choose from the menu, then aim at the board."}
         </p>
       </header>

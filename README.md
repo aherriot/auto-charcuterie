@@ -1,6 +1,6 @@
 # Auto-Charcuterie
 
-**Play it now → [autocharcuterie.vercel.app](https://autocharcuterie.vercel.app)**
+**Play it now → [auto-charcuterie.vercel.app](https://auto-charcuterie.vercel.app)**
 
 Build a charcuterie board in 3D. Drop food from above and let physics decide where it
 lands. Two judges heckle you the entire time, then score you out of 100 and hand you
@@ -45,7 +45,7 @@ read as real, and Dimforge's engine has no deformables. Slices are XPBD cloth so
 entirely in a WGSL compute shader: particle positions live in GPU storage buffers, the
 compute pass solves constraints, and the vertex stage reads the same buffer directly —
 no CPU readback anywhere in the render path. Runnable at
-[`/spike/cloth`](https://autocharcuterie.vercel.app/spike/cloth) with live solver
+[`/spike/cloth`](https://auto-charcuterie.vercel.app/spike/cloth) with live solver
 controls.
 
 The surprising result from building it: a *coarse* grid solved very hard beats a fine

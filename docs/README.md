@@ -21,18 +21,27 @@ The judges are deterministic heuristics plus authored copy. **No LLM API calls.*
 
 ## Current status
 
-**Phase 0 complete — GPU cloth confirmed.** The question that gated the project
-(can a slice drape convincingly without soft-body physics?) is answered yes. The
-rigid-slice fallback is not needed. Next up is Phase 1, the renderer core.
+Phases 0, 1, 2, 3 and 5 are complete. **Phase 4 (cloth slices) is deferred by
+decision** — the solver is proven and runnable, it just isn't wired into the
+board yet. Remaining: Phase 6 (tasting-menu UI) and Phase 7 (polish).
 
-The spike lives at `/spike/cloth` and stays until Phase 4 promotes the solver.
+The loop is playable end to end at `/board`: pick from the tray, drop, get
+heckled, hit Serve.
+
+| Route | What it is |
+|---|---|
+| `/` | Landing page |
+| `/board` | The game — placement, physics, judges, verdict |
+| `/catalog` | Art-direction review of all 16 foods |
+| `/spike/cloth` | Phase 0 cloth spike, kept for when Phase 4 resumes |
 
 ## Quick start
 
 ```bash
 npm install
 npm run dev     # http://localhost:3000
-npm run check   # typecheck + WGSL reserved-word lint
+npm run check   # typecheck + WGSL lint + mesh validation + tests
+npm test        # scoring and judge tests alone (no GPU needed)
 ```
 
 Requires a browser with WebGPU enabled. There is deliberately no WebGL fallback —

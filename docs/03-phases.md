@@ -181,12 +181,15 @@ charcoal, gold rules, prices leadered like a menu.
 ────────────────────────
   P L A N C H E
   ── selections ──
-Prosciutto di Parma  ···  9.00
-Aged Gouda           ···  7.50
-Castelvetrano Olives ···  4.00
+3 Prosciutto di Parma ···  3.60
+2 Aged Gouda          ···  2.20
+6 Castelvetrano Olives···  1.80
 ────────────────────────
-           TOTAL    20.50
+           TOTAL     7.60
 ```
+
+Prices are per placed piece, in dollars — one slice, one olive — so the bill
+counts quantities rather than listing a packet price per food.
 
 Tray of 16 items with prices, always-visible running total, live judge feed,
 SERVE button, results card with both scores and verdicts.
@@ -204,4 +207,5 @@ SERVE button, results card with both scores and verdicts.
 - Drop and settle juice
 - Score-reveal animation
 - Perf pass with GPU timestamp queries
-- Touch tuning on iPad
+- ~~Touch tuning on iPad~~ — done, but **unverified on real hardware**. Written
+  against the pointer-events spec, not tested on a device.

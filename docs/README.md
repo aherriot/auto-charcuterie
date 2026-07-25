@@ -21,9 +21,10 @@ The judges are deterministic heuristics plus authored copy. **No LLM API calls.*
 
 ## Current status
 
-Phases 0, 1, 2, 3 and 5 are complete. **Phase 4 (cloth slices) is deferred by
-decision** — the solver is proven and runnable, it just isn't wired into the
-board yet. Remaining: Phase 6 (tasting-menu UI) and Phase 7 (polish).
+Phases 0, 1, 2, 3, 5 and 6 are complete. **Phase 4 (cloth slices) is deferred
+by decision** — the solver is proven and runnable, it just isn't wired into the
+board yet. Remaining: Phase 7 (polish — downloadable render, sound, score
+reveal, touch tuning).
 
 The loop is playable end to end at `/board`: pick from the tray, drop, get
 heckled, hit Serve.

@@ -47,8 +47,14 @@ export interface Material {
 export interface InstanceSpec {
   position: [number, number, number];
   scale?: number;
-  /** Rotation about Y, radians. Enough for placement; full quats can come later. */
+  /** Rotation about Y, radians. Convenience for statically placed items. */
   rotationY?: number;
+  /**
+   * Full orientation as a quaternion (xyzw), which physics produces and a
+   * single Y angle cannot express — a tumbling olive rotates about every axis.
+   * Takes precedence over `rotationY` when both are given.
+   */
+  rotation?: [number, number, number, number];
   material: Material;
   /**
    * Decorrelates procedural patterns between instances of the same mesh, so a
@@ -84,6 +90,22 @@ export const DEFAULT_LIGHT: LightSettings = {
   ambientSky: [0.16, 0.18, 0.24],
   ambientGround: [0.14, 0.1, 0.07],
 };
+
+/** Transforms an NDC point through an inverse view-projection into world space. */
+function unproject(
+  inv: Float32Array | number[],
+  x: number,
+  y: number,
+  z: number,
+): [number, number, number] | null {
+  const w = inv[3] * x + inv[7] * y + inv[11] * z + inv[15];
+  if (Math.abs(w) < 1e-9) return null;
+  return [
+    (inv[0] * x + inv[4] * y + inv[8] * z + inv[12]) / w,
+    (inv[1] * x + inv[5] * y + inv[9] * z + inv[13]) / w,
+    (inv[2] * x + inv[6] * y + inv[10] * z + inv[14]) / w,
+  ];
+}
 
 export class SceneRenderer {
   readonly ctx: GPUContext;
@@ -366,7 +388,11 @@ export class SceneRenderer {
 
         const model = mat4.identity();
         mat4.translate(model, vec3.create(...inst.position), model);
-        if (inst.rotationY) mat4.rotateY(model, inst.rotationY, model);
+        if (inst.rotation) {
+          mat4.multiply(model, mat4.fromQuat(inst.rotation), model);
+        } else if (inst.rotationY) {
+          mat4.rotateY(model, inst.rotationY, model);
+        }
         const s = inst.scale ?? 1;
         if (s !== 1) mat4.scale(model, vec3.create(s, s, s), model);
 
@@ -509,6 +535,35 @@ export class SceneRenderer {
       ((clipX / clipW) * 0.5 + 0.5) * rect.width,
       (0.5 - (clipY / clipW) * 0.5) * rect.height,
     ];
+  }
+
+  /**
+   * Where a screen-space point lands on a horizontal plane at height `y`.
+   *
+   * This is all the picking Phase 3 needs: items are dropped from above onto a
+   * flat board, so a ray/plane intersection gives the spawn point directly. No
+   * GPU picking pass, no depth readback, no per-object hit testing.
+   */
+  pickOnPlane(clientX: number, clientY: number, y: number): [number, number] | null {
+    const rect = this.ctx.canvas.getBoundingClientRect();
+    // Normalised device coordinates: x right, y up.
+    const ndcX = ((clientX - rect.left) / rect.width) * 2 - 1;
+    const ndcY = 1 - ((clientY - rect.top) / rect.height) * 2;
+
+    const inv = mat4.inverse(this.camera.viewProj(this.ctx.aspect));
+
+    const near = unproject(inv, ndcX, ndcY, 0);
+    const far = unproject(inv, ndcX, ndcY, 1);
+    if (!near || !far) return null;
+
+    const dy = far[1] - near[1];
+    // Ray parallel to the plane never meets it.
+    if (Math.abs(dy) < 1e-6) return null;
+
+    const t = (y - near[1]) / dy;
+    if (t < 0) return null;
+
+    return [near[0] + (far[0] - near[0]) * t, near[2] + (far[2] - near[2]) * t];
   }
 
   render() {

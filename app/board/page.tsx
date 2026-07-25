@@ -8,7 +8,7 @@ import styles from "./page.module.css";
 
 export default function BoardPage() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [stats, setStats] = useState<BoardStats>({ fps: 0, instances: 0 });
+  const [stats, setStats] = useState<BoardStats>({ fps: 0, instances: 0, spend: 0 });
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -56,11 +56,13 @@ export default function BoardPage() {
         <span className={stats.fps < 55 ? styles.bad : styles.good}>
           {stats.fps.toFixed(0)} fps
         </span>
+        <span>{stats.instances} items</span>
+        <span>£{stats.spend.toFixed(2)}</span>
         <Link href="/" className={styles.link}>
           ← home
         </Link>
-        <Link href="/spike/cloth" className={styles.link}>
-          cloth spike →
+        <Link href="/catalog" className={styles.link}>
+          catalogue →
         </Link>
       </footer>
     </main>

@@ -6,8 +6,10 @@
  * real food catalogue; the renderer beneath doesn't change.
  */
 
-import { SceneRenderer, type InstanceSpec } from "./scene";
-import { roundedBox, sphere, superellipsoid } from "./mesh/primitives";
+import { SceneRenderer } from "./scene";
+import { roundedBox } from "./mesh/primitives";
+import { buildFoodMesh } from "./mesh/foods";
+import { CATALOG, MaterialId, type Food } from "../game/catalog";
 
 export const BOARD_HALF = 1.1;
 export const BOARD_TOP = 0.06;
@@ -15,6 +17,7 @@ export const BOARD_TOP = 0.06;
 export interface BoardStats {
   fps: number;
   instances: number;
+  spend: number;
 }
 
 export class BoardScene {
@@ -24,6 +27,8 @@ export class BoardScene {
   private last = 0;
   private fpsAccum = 0;
   private fpsFrames = 0;
+  private instances = 0;
+  private spend = 0;
 
   onStats?: (stats: BoardStats) => void;
 
@@ -52,39 +57,106 @@ export class BoardScene {
     r.setInstances(boardMesh, [
       {
         position: [0, 0, 0],
-        material: { albedo: [0.29, 0.17, 0.09], roughness: 0.62, ao: 1 },
+        material: {
+          albedo: [0.31, 0.18, 0.09],
+          roughness: 0.62,
+          materialId: MaterialId.WOOD,
+        },
       },
     ]);
 
-    // Placeholder produce — stand-ins to prove shadowing and shading. These get
-    // replaced wholesale by the catalogue in Phase 2.
-    const oliveMesh = r.addMesh(superellipsoid(0.055, 0.072, 0.055, 2.3, 20, 14));
-    r.setInstances(oliveMesh, scatter(9, 0.42, (i) => ({
-      position: [0, BOARD_TOP + 0.072, 0],
-      scale: 0.9 + ((i * 37) % 20) / 100,
-      material: { albedo: [0.22, 0.26, 0.09], roughness: 0.34, ao: 0.85 },
-    })));
+    // A hand-arranged sample board. Phase 3 replaces this with real placement,
+    // but it exercises every material and gives the lighting something honest
+    // to work on in the meantime.
+    const arrangement: Array<[string, number, number, number]> = [
+      // id, x, z, count
+      ["prosciutto", -0.55, -0.14, 2],
+      ["soppressata", -0.16, -0.3, 3],
+      ["salami", 0.2, -0.3, 3],
+      ["brie", -0.66, 0.22, 1],
+      ["gouda", 0.62, -0.12, 1],
+      ["blue", 0.66, 0.24, 1],
+      ["cheddar", 0.3, 0.34, 2],
+      ["grapes", -0.02, 0.26, 7],
+      ["figs", -0.34, 0.3, 2],
+      ["cornichons", 0.45, -0.36, 3],
+      ["olives", 0.06, -0.02, 6],
+      ["almonds", -0.42, -0.34, 5],
+      ["cashews", 0.52, 0.06, 4],
+      ["crackers", -0.85, -0.3, 3],
+      ["breadsticks", 0.0, 0.42, 2],
+      ["honeycomb", 0.86, 0.36, 1],
+    ];
 
-    const berryMesh = r.addMesh(sphere(0.062, 20, 14));
-    r.setInstances(berryMesh, scatter(7, 0.62, (i) => ({
-      position: [0, BOARD_TOP + 0.062, 0],
-      scale: 0.85 + ((i * 53) % 25) / 100,
-      material: { albedo: [0.31, 0.11, 0.26], roughness: 0.28, ao: 0.85 },
-    }), 1.9));
+    for (const [id, x, z, count] of arrangement) {
+      const food = CATALOG.find((f) => f.id === id);
+      if (!food) continue;
+      this.spend += food.price;
 
-    const wedgeMesh = r.addMesh(roundedBox(0.16, 0.075, 0.11, 0.03, 3));
-    r.setInstances(wedgeMesh, [
-      {
-        position: [-0.52, BOARD_TOP + 0.075, 0.2],
-        rotationY: 0.4,
-        material: { albedo: [0.86, 0.72, 0.35], roughness: 0.55, ao: 0.95 },
-      },
-      {
-        position: [0.55, BOARD_TOP + 0.075, -0.22],
-        rotationY: -0.7,
-        material: { albedo: [0.9, 0.85, 0.72], roughness: 0.6, ao: 0.95 },
-      },
-    ]);
+      for (let k = 0; k < count; k++) {
+        const seed = hash(id, k);
+        const mesh = buildFoodMesh(food.mesh, seed);
+        const handle = r.addMesh(mesh);
+
+        // Cluster members spiral out from the anchor so groups read as piles
+        // rather than rows.
+        const a = k * 2.399;
+        const spread = Math.sqrt(k) * food.radius * 1.35;
+
+        r.setInstances(handle, [
+          {
+            position: [
+              x + Math.cos(a) * spread,
+              BOARD_TOP + this.restHeight(food),
+              z + Math.sin(a) * spread * 0.8,
+            ],
+            rotationY: seed * 2.2,
+            seed,
+            material: {
+              albedo: food.color,
+              roughness: food.baseRoughness,
+              materialId: food.materialId,
+              ao: 0.95,
+            },
+          },
+        ]);
+        this.instances++;
+      }
+    }
+  }
+
+  /**
+   * Height at which a food rests on the board. Meshes are built centred on the
+   * origin, so this is half their vertical extent — approximated from radius,
+   * which is close enough until Phase 3 has real colliders.
+   */
+  private restHeight(food: Food): number {
+    switch (food.mesh) {
+      case "slice":
+      case "cracker":
+        return 0.008;
+      case "salamiRound":
+      case "soppressataRound":
+        return 0.012;
+      case "brieWedge":
+      case "blueWedge":
+        return 0.05;
+      case "goudaBlock":
+      case "cheddarCube":
+        return 0.076;
+      case "honeycomb":
+        return 0.026;
+      case "almond":
+        return 0.018;
+      case "olive":
+        return 0.034;
+      case "cashew":
+      case "breadstick":
+      case "cornichon":
+        return 0.02;
+      default:
+        return food.radius * 0.92;
+    }
   }
 
   private loop = (now: number) => {
@@ -97,7 +169,11 @@ export class BoardScene {
     this.fpsAccum += dt;
     this.fpsFrames++;
     if (this.fpsAccum >= 0.5) {
-      this.onStats?.({ fps: this.fpsFrames / this.fpsAccum, instances: 19 });
+      this.onStats?.({
+        fps: this.fpsFrames / this.fpsAccum,
+        instances: this.instances,
+        spend: this.spend,
+      });
       this.fpsAccum = 0;
       this.fpsFrames = 0;
     }
@@ -112,29 +188,13 @@ export class BoardScene {
   }
 }
 
-/**
- * Lays out `count` items on a golden-angle spiral, which distributes them
- * evenly without the grid artefacts of a random scatter or the obvious ring of
- * a circular one.
- */
-function scatter(
-  count: number,
-  radius: number,
-  make: (i: number) => InstanceSpec,
-  squash = 1,
-): InstanceSpec[] {
-  const golden = Math.PI * (3 - Math.sqrt(5));
-  return Array.from({ length: count }, (_, i) => {
-    const spec = make(i);
-    const t = Math.sqrt((i + 0.5) / count) * radius;
-    const a = i * golden;
-    return {
-      ...spec,
-      position: [
-        Math.cos(a) * t * squash + spec.position[0],
-        spec.position[1],
-        Math.sin(a) * t * 0.7 + spec.position[2],
-      ],
-    };
-  });
+/** Stable per-item seed, so the sample board looks the same on every load. */
+function hash(id: string, k: number): number {
+  let h = 2166136261;
+  for (let i = 0; i < id.length; i++) {
+    h ^= id.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  h = Math.imul(h ^ k, 2654435761);
+  return ((h >>> 0) % 10000) / 1000;
 }

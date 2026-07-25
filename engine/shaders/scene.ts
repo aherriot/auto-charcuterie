@@ -7,6 +7,9 @@
  * docs/01-vision-and-decisions.md to stop renderer scope creep.
  */
 
+import { MATERIALS_WGSL } from "./materials";
+import { NOISE_WGSL } from "./noise";
+
 /** Matches `Frame` below and `FRAME_BYTES` in the renderer. */
 export const FRAME_BYTES = 224;
 
@@ -14,6 +17,9 @@ export const FRAME_BYTES = 224;
 export const INSTANCE_BYTES = 96;
 
 export const SCENE_WGSL = /* wgsl */ `
+${NOISE_WGSL}
+${MATERIALS_WGSL}
+
 struct Frame {
   viewProj      : mat4x4f,
   lightViewProj : mat4x4f,
@@ -27,8 +33,8 @@ struct Frame {
 
 struct Instance {
   model    : mat4x4f,
-  albedo   : vec4f,   // rgb albedo, a roughness
-  material : vec4f,   // x metallic, y ambient occlusion, zw spare
+  albedo   : vec4f,   // rgb base tint, a base roughness
+  material : vec4f,   // x metallic, y ambient occlusion, z material id, w seed
 };
 
 @group(0) @binding(0) var<uniform> F : Frame;
@@ -38,11 +44,18 @@ struct Instance {
 @group(1) @binding(0) var<storage, read> instances : array<Instance>;
 
 struct VSOut {
-  @builtin(position) clip     : vec4f,
-  @location(0)       world    : vec3f,
-  @location(1)       normal   : vec3f,
-  @location(2)       albedo   : vec4f,
-  @location(3)       material : vec4f,
+  @builtin(position) clip      : vec4f,
+  @location(0)       world     : vec3f,
+  @location(1)       normal    : vec3f,
+  @location(2)       albedo    : vec4f,
+  @location(3)       material  : vec4f,
+  // Materials sample in object space so a pattern stays locked to its food as
+  // it tumbles, instead of swimming across the surface in world space.
+  @location(4)       objectPos : vec3f,
+  // Object-space normal too: several materials need to know which *face* they
+  // are on — brie's rind wraps the wheel's outer surfaces but not its cut
+  // faces, and no function of position alone can tell those apart.
+  @location(5)       objectNrm : vec3f,
 };
 
 @vertex
@@ -62,6 +75,8 @@ fn vs(
   o.normal = normalize((inst.model * vec4f(normal, 0.0)).xyz);
   o.albedo = inst.albedo;
   o.material = inst.material;
+  o.objectPos = position;
+  o.objectNrm = normal;
   return o;
 }
 
@@ -144,8 +159,16 @@ fn fs(in : VSOut, @builtin(front_facing) front : bool) -> @location(0) vec4f {
   let ndv = max(dot(n, v), 1e-4);
   let ndh = max(dot(n, h), 0.0);
 
-  let albedo = in.albedo.rgb;
-  let rough = clamp(in.albedo.a, 0.045, 1.0);
+  let surface = surfaceFor(
+    u32(in.material.z),
+    in.objectPos,
+    normalize(in.objectNrm),
+    in.albedo.rgb,
+    in.albedo.a,
+    in.material.w,
+  );
+  let albedo = surface.albedo;
+  let rough = surface.rough;
   let metallic = in.material.x;
   let ao = in.material.y;
 

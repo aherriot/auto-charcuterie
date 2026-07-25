@@ -31,12 +31,17 @@ const MAX_INSTANCES = 1024;
 const POST_BYTES = 16;
 
 export interface Material {
-  /** Linear RGB. Values here are pre-tonemap, so they can be gentle. */
+  /**
+   * Linear RGB base tint. Procedural materials modulate around this, so it sets
+   * the food's identity while the material function supplies the structure.
+   */
   albedo: [number, number, number];
   roughness: number;
   metallic?: number;
   /** Baked ambient occlusion multiplier. */
   ao?: number;
+  /** Procedural material id — see MAT in engine/shaders/materials.ts. */
+  materialId?: number;
 }
 
 export interface InstanceSpec {
@@ -45,6 +50,11 @@ export interface InstanceSpec {
   /** Rotation about Y, radians. Enough for placement; full quats can come later. */
   rotationY?: number;
   material: Material;
+  /**
+   * Decorrelates procedural patterns between instances of the same mesh, so a
+   * bowl of olives isn't sixteen copies of one olive.
+   */
+  seed?: number;
 }
 
 export interface MeshHandle {
@@ -367,7 +377,12 @@ export class SceneRenderer {
           base + 16,
         );
         this.instanceData.set(
-          [inst.material.metallic ?? 0, inst.material.ao ?? 1, 0, 0],
+          [
+            inst.material.metallic ?? 0,
+            inst.material.ao ?? 1,
+            inst.material.materialId ?? 0,
+            inst.seed ?? 0,
+          ],
           base + 20,
         );
         cursor++;
@@ -472,6 +487,28 @@ export class SceneRenderer {
         { binding: 2, resource: this.hdrSampler },
       ],
     });
+  }
+
+  /**
+   * Projects a world point to CSS pixel coordinates, for positioning HTML
+   * overlays against 3D content. Returns null when the point is behind the
+   * camera. Uses CSS pixels rather than the backing-store size, since that's
+   * the space DOM elements are laid out in.
+   */
+  project(world: [number, number, number]): [number, number] | null {
+    const vp = this.camera.viewProj(this.ctx.aspect);
+    const [x, y, z] = world;
+    const clipW = vp[3] * x + vp[7] * y + vp[11] * z + vp[15];
+    if (clipW <= 1e-6) return null;
+
+    const clipX = vp[0] * x + vp[4] * y + vp[8] * z + vp[12];
+    const clipY = vp[1] * x + vp[5] * y + vp[9] * z + vp[13];
+
+    const rect = this.ctx.canvas.getBoundingClientRect();
+    return [
+      ((clipX / clipW) * 0.5 + 0.5) * rect.width,
+      (0.5 - (clipY / clipW) * 0.5) * rect.height,
+    ];
   }
 
   render() {

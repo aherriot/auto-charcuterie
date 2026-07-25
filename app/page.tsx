@@ -4,7 +4,7 @@ import styles from "./page.module.css";
 export default function Home() {
   return (
     <main className={styles.main}>
-      <p className={styles.eyebrow}>Phase 1 · renderer core</p>
+      <p className={styles.eyebrow}>Phase 2 · geometry &amp; materials</p>
       <h1 className={styles.title}>Auto&#8209;Charcuterie</h1>
       <p className={styles.blurb}>
         Build a charcuterie board. Be judged for it, harshly, by two people who
@@ -21,6 +21,9 @@ export default function Home() {
       <nav className={styles.links}>
         <Link href="/board" className={styles.cta}>
           View the board →
+        </Link>
+        <Link href="/catalog" className={styles.secondary}>
+          Catalogue
         </Link>
         <Link href="/spike/cloth" className={styles.secondary}>
           Cloth spike

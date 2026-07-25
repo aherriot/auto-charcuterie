@@ -45,6 +45,310 @@ class MeshBuilder {
   }
 }
 
+export type Vec3 = [number, number, number];
+
+/**
+ * Sweeps a circular cross-section along a path — cashews, breadsticks,
+ * cornichons, anything vaguely tubular.
+ *
+ * Frames are propagated by parallel transport rather than recomputed from a
+ * fixed up-vector: a Frenet frame flips wherever the path's curvature reverses,
+ * which would twist the mesh at exactly the bends that make a cashew a cashew.
+ *
+ * `radius` is sampled along the path so ends can taper, and `profile` optionally
+ * squashes the cross-section into an ellipse.
+ */
+export function sweptTube(
+  path: Vec3[],
+  radius: (t: number) => number,
+  segments = 12,
+  profile: (t: number) => [number, number] = () => [1, 1],
+): MeshData {
+  const b = new MeshBuilder();
+  const n = path.length;
+  if (n < 2) return b.build();
+
+  // Seed the frame with any vector not parallel to the first tangent.
+  let tangent = norm(sub(path[1], path[0]));
+  let normal = norm(cross(Math.abs(tangent[1]) > 0.9 ? [1, 0, 0] : [0, 1, 0], tangent));
+  const rings: number[][] = [];
+
+  for (let i = 0; i < n; i++) {
+    const t = i / (n - 1);
+
+    const nextTangent = norm(
+      i === 0 ? sub(path[1], path[0])
+      : i === n - 1 ? sub(path[n - 1], path[n - 2])
+      : sub(path[i + 1], path[i - 1]),
+    );
+
+    // Rotate the previous normal by the same rotation that takes the previous
+    // tangent to this one — this is the parallel transport step.
+    const axis = cross(tangent, nextTangent);
+    const axisLen = len(axis);
+    if (axisLen > 1e-8) {
+      const angle = Math.atan2(axisLen, dot(tangent, nextTangent));
+      normal = norm(rotateAround(normal, scale(axis, 1 / axisLen), angle));
+    }
+    tangent = nextTangent;
+
+    // Re-orthogonalise against drift accumulated over many steps.
+    normal = norm(sub(normal, scale(tangent, dot(normal, tangent))));
+    const binormal = cross(tangent, normal);
+
+    const r = radius(t);
+    const [sx, sy] = profile(t);
+    const ring: number[] = [];
+
+    for (let s = 0; s <= segments; s++) {
+      const a = (s / segments) * Math.PI * 2;
+      const ca = Math.cos(a);
+      const sa = Math.sin(a);
+
+      const offset = add(scale(normal, ca * r * sx), scale(binormal, sa * r * sy));
+      const p = add(path[i], offset);
+      // For a non-circular profile the surface normal isn't the radial vector;
+      // scaling each axis by its reciprocal gives the correct ellipse normal.
+      const nrm = norm(
+        add(scale(normal, (ca * sy) / sx || ca), scale(binormal, (sa * sx) / sy || sa)),
+      );
+      ring.push(b.vertex(p[0], p[1], p[2], nrm[0], nrm[1], nrm[2]));
+    }
+    rings.push(ring);
+  }
+
+  for (let i = 0; i < n - 1; i++) {
+    for (let s = 0; s < segments; s++) {
+      b.quad(rings[i][s], rings[i][s + 1], rings[i + 1][s + 1], rings[i + 1][s]);
+    }
+  }
+
+  // Cap the ends with fans so tapered tubes aren't hollow.
+  const capStart = norm(sub(path[0], path[1]));
+  const centreStart = b.vertex(...path[0], ...capStart);
+  for (let s = 0; s < segments; s++) {
+    b.triangle(centreStart, rings[0][s + 1], rings[0][s]);
+  }
+
+  const capEnd = norm(sub(path[n - 1], path[n - 2]));
+  const centreEnd = b.vertex(...path[n - 1], ...capEnd);
+  for (let s = 0; s < segments; s++) {
+    b.triangle(centreEnd, rings[n - 1][s], rings[n - 1][s + 1]);
+  }
+
+  return b.build();
+}
+
+/**
+ * A disc with an irregular, wobbling rim — salami and soppressata rounds.
+ *
+ * The wobble is what stops it reading as a machined cylinder: real cured
+ * sausage is never a perfect circle in cross-section.
+ */
+export function disc(
+  radius: number,
+  thickness: number,
+  segments = 32,
+  wobble = 0.04,
+  seed = 1,
+): MeshData {
+  const b = new MeshBuilder();
+  const hy = thickness / 2;
+
+  const rim = Array.from({ length: segments }, (_, i) => {
+    const a = (i / segments) * Math.PI * 2;
+    // Two incommensurate harmonics — one alone looks like a deliberate oval.
+    const r =
+      radius *
+      (1 + Math.sin(a * 3 + seed) * wobble + Math.sin(a * 5 - seed * 2.1) * wobble * 0.5);
+    return { x: Math.cos(a) * r, z: Math.sin(a) * r, nx: Math.cos(a), nz: Math.sin(a) };
+  });
+
+  const top: number[] = [];
+  const bot: number[] = [];
+  const sideTop: number[] = [];
+  const sideBot: number[] = [];
+
+  for (const p of rim) {
+    top.push(b.vertex(p.x, hy, p.z, 0, 1, 0));
+    bot.push(b.vertex(p.x, -hy, p.z, 0, -1, 0));
+    sideTop.push(b.vertex(p.x, hy, p.z, p.nx, 0, p.nz));
+    sideBot.push(b.vertex(p.x, -hy, p.z, p.nx, 0, p.nz));
+  }
+
+  const topCentre = b.vertex(0, hy, 0, 0, 1, 0);
+  const botCentre = b.vertex(0, -hy, 0, 0, -1, 0);
+
+  for (let i = 0; i < segments; i++) {
+    const j = (i + 1) % segments;
+    b.triangle(topCentre, top[j], top[i]);
+    b.triangle(botCentre, bot[i], bot[j]);
+    // Wall winding runs j→i, opposite to the fans. With the ring traversed
+    // counter-clockwise in (x,z), i→j puts the outward face inward.
+    b.quad(sideBot[j], sideBot[i], sideTop[i], sideTop[j]);
+  }
+
+  return b.build();
+}
+
+/**
+ * Triangular wedge with softened edges — brie and blue, cut from a wheel.
+ *
+ * `arc` bows the outer edge so it reads as a slice of a round rather than a
+ * plain triangle.
+ */
+export function wedge(
+  radius: number,
+  height: number,
+  angle = Math.PI / 3.2,
+  arcSegments = 8,
+): MeshData {
+  const b = new MeshBuilder();
+  const hy = height / 2;
+
+  // Arc runs high-to-low so the outline is counter-clockwise in (x,z), matching
+  // every other generator here. Sweeping the other way inverts the whole wedge.
+  const outline: Array<{ x: number; z: number }> = [{ x: 0, z: 0 }];
+  for (let i = 0; i <= arcSegments; i++) {
+    const a = angle / 2 - (i / arcSegments) * angle;
+    outline.push({ x: Math.sin(a) * radius, z: Math.cos(a) * radius });
+  }
+
+  const n = outline.length;
+  const top = outline.map((p) => b.vertex(p.x, hy, p.z, 0, 1, 0));
+  const bot = outline.map((p) => b.vertex(p.x, -hy, p.z, 0, -1, 0));
+
+  // Fan both faces from the wedge point.
+  for (let i = 1; i < n - 1; i++) {
+    b.triangle(top[0], top[i + 1], top[i]);
+    b.triangle(bot[0], bot[i], bot[i + 1]);
+  }
+
+  // Walls all the way round, including the two straight cut faces.
+  for (let i = 0; i < n; i++) {
+    const j = (i + 1) % n;
+    const edge = norm([outline[j].x - outline[i].x, 0, outline[j].z - outline[i].z]);
+    const nrm: Vec3 = [edge[2], 0, -edge[0]];
+
+    const a = b.vertex(outline[i].x, -hy, outline[i].z, ...nrm);
+    const c = b.vertex(outline[j].x, -hy, outline[j].z, ...nrm);
+    const d = b.vertex(outline[j].x, hy, outline[j].z, ...nrm);
+    const e = b.vertex(outline[i].x, hy, outline[i].z, ...nrm);
+    b.quad(c, a, e, d);
+  }
+
+  return b.build();
+}
+
+/**
+ * Extrudes a closed 2D outline into a thin slab — crackers, fig halves, any
+ * flat item whose silhouette carries the character.
+ */
+export function loftedPolygon(
+  outline: Array<[number, number]>,
+  thickness: number,
+): MeshData {
+  const b = new MeshBuilder();
+  const hy = thickness / 2;
+  const n = outline.length;
+
+  const top = outline.map(([x, z]) => b.vertex(x, hy, z, 0, 1, 0));
+  const bot = outline.map(([x, z]) => b.vertex(x, -hy, z, 0, -1, 0));
+  const topCentre = b.vertex(0, hy, 0, 0, 1, 0);
+  const botCentre = b.vertex(0, -hy, 0, 0, -1, 0);
+
+  for (let i = 0; i < n; i++) {
+    const j = (i + 1) % n;
+    b.triangle(topCentre, top[j], top[i]);
+    b.triangle(botCentre, bot[i], bot[j]);
+
+    const edge = norm([outline[j][0] - outline[i][0], 0, outline[j][1] - outline[i][1]]);
+    const nrm: Vec3 = [edge[2], 0, -edge[0]];
+    const a = b.vertex(outline[i][0], -hy, outline[i][1], ...nrm);
+    const c = b.vertex(outline[j][0], -hy, outline[j][1], ...nrm);
+    const d = b.vertex(outline[j][0], hy, outline[j][1], ...nrm);
+    const e = b.vertex(outline[i][0], hy, outline[i][1], ...nrm);
+    b.quad(c, a, e, d);
+  }
+
+  return b.build();
+}
+
+/** Regular polygon outline, for crackers and the honeycomb slab. */
+export function polygonOutline(
+  sides: number,
+  radius: number,
+  scallop = 0,
+  seed = 0,
+): Array<[number, number]> {
+  return Array.from({ length: sides }, (_, i) => {
+    const a = (i / sides) * Math.PI * 2 + seed;
+    const r = radius * (1 + Math.sin(a * sides * 0.5) * scallop);
+    return [Math.cos(a) * r, Math.sin(a) * r] as [number, number];
+  });
+}
+
+// --- small vector helpers, local to mesh generation ------------------------
+
+function add(a: Vec3, b: Vec3): Vec3 {
+  return [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
+}
+function sub(a: Vec3, b: Vec3): Vec3 {
+  return [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+}
+function scale(a: Vec3, s: number): Vec3 {
+  return [a[0] * s, a[1] * s, a[2] * s];
+}
+function dot(a: Vec3, b: Vec3): number {
+  return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+}
+function cross(a: Vec3, b: Vec3): Vec3 {
+  return [
+    a[1] * b[2] - a[2] * b[1],
+    a[2] * b[0] - a[0] * b[2],
+    a[0] * b[1] - a[1] * b[0],
+  ];
+}
+function len(a: Vec3): number {
+  return Math.hypot(a[0], a[1], a[2]);
+}
+function norm(a: Vec3): Vec3 {
+  const l = len(a);
+  return l < 1e-9 ? [0, 1, 0] : [a[0] / l, a[1] / l, a[2] / l];
+}
+/** Rodrigues rotation of `v` about unit `axis` by `angle`. */
+function rotateAround(v: Vec3, axis: Vec3, angle: number): Vec3 {
+  const c = Math.cos(angle);
+  const s = Math.sin(angle);
+  return add(
+    add(scale(v, c), scale(cross(axis, v), s)),
+    scale(axis, dot(axis, v) * (1 - c)),
+  );
+}
+
+/** Cubic Bezier sampled into a path, for swept shapes. */
+export function bezierPath(
+  p0: Vec3,
+  p1: Vec3,
+  p2: Vec3,
+  p3: Vec3,
+  steps = 16,
+): Vec3[] {
+  return Array.from({ length: steps + 1 }, (_, i) => {
+    const t = i / steps;
+    const u = 1 - t;
+    const w0 = u * u * u;
+    const w1 = 3 * u * u * t;
+    const w2 = 3 * u * t * t;
+    const w3 = t * t * t;
+    return [
+      p0[0] * w0 + p1[0] * w1 + p2[0] * w2 + p3[0] * w3,
+      p0[1] * w0 + p1[1] * w1 + p2[1] * w2 + p3[1] * w3,
+      p0[2] * w0 + p1[2] * w1 + p2[2] * w2 + p3[2] * w3,
+    ] as Vec3;
+  });
+}
+
 /**
  * Rounded, chamfered box — the cutting board.
  *
@@ -216,6 +520,17 @@ export interface WindingReport {
   inverted: number;
   /** Zero-area triangles, which are winding-agnostic and excluded. */
   degenerate: number;
+  /**
+   * Signed volume via the divergence theorem. Positive for a closed mesh wound
+   * outward; negative means the whole surface faces inward.
+   *
+   * This catches what the per-triangle check cannot. Where a generator derives
+   * its vertex normals from the same orientation as its winding — extruded
+   * walls, for instance — reversing the outline flips *both*, so geometric and
+   * shaded normals still agree and every triangle looks consistent. The mesh is
+   * nonetheless inside-out. Volume is orientation-absolute and sees it.
+   */
+  volume: number;
 }
 
 /**
@@ -229,7 +544,12 @@ export interface WindingReport {
  */
 export function checkWinding(mesh: MeshData): WindingReport {
   const { vertices: v, indices: idx } = mesh;
-  const report: WindingReport = { triangles: 0, inverted: 0, degenerate: 0 };
+  const report: WindingReport = {
+    triangles: 0,
+    inverted: 0,
+    degenerate: 0,
+    volume: 0,
+  };
 
   const pos = (i: number): [number, number, number] => [
     v[i * 6],
@@ -255,6 +575,14 @@ export function checkWinding(mesh: MeshData): WindingReport {
     const gz = e1[0] * e2[1] - e1[1] * e2[0];
 
     report.triangles++;
+
+    // Signed volume of the tetrahedron from the origin to this triangle.
+    report.volume +=
+      (p0[0] * (p1[1] * p2[2] - p1[2] * p2[1]) +
+        p0[1] * (p1[2] * p2[0] - p1[0] * p2[2]) +
+        p0[2] * (p1[0] * p2[1] - p1[1] * p2[0])) /
+      6;
+
     if (Math.hypot(gx, gy, gz) < 1e-12) {
       report.degenerate++;
       continue;

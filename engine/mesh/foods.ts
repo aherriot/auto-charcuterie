@@ -69,7 +69,8 @@ export function buildFoodMesh(id: MeshId, seed = 0): MeshData {
       return wedge(0.24, 0.1, Math.PI / 2.8, 9);
 
     case "cheddarCube":
-      return roundedBox(0.075, 0.075, 0.075, 0.012, 3);
+      // Small — a cube cut to go on a cracker, not to be sliced from.
+      return roundedBox(0.045, 0.045, 0.045, 0.0072, 3);
 
     case "grape":
       // Slightly prolate and faintly asymmetric — grapes are never spherical,

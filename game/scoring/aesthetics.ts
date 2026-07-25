@@ -9,6 +9,7 @@
  * score with no explanation is neither useful nor funny.
  */
 
+import { HANDFUL_RADIUS } from "../catalog";
 import { onBoard, type BoardSnapshot, type PlacedItem } from "../snapshot";
 
 export interface Component {
@@ -295,9 +296,16 @@ function heightVariation(snapshot: BoardSnapshot, items: PlacedItem[]): Componen
  *
  * Only counts neighbours of the *same* food: a mixed cluster is a deliberate
  * grouping, six salami rounds touching is laziness.
+ *
+ * Handful-sized items are exempt entirely, as both the huddle and the thing
+ * huddled against. Olives, nuts and grapes arrive in a scattered heap because
+ * that is how they are served — penalising it would be scoring the food rather
+ * than the arrangement, and it is the one thing the old scorer got most wrong.
  */
 function clustering(items: PlacedItem[]): Component {
-  if (items.length < 2) {
+  const placed = items.filter((i) => i.radius > HANDFUL_RADIUS);
+
+  if (placed.length < 2) {
     return {
       key: "clustering",
       label: "Clumping",
@@ -308,8 +316,8 @@ function clustering(items: PlacedItem[]): Component {
   }
 
   let huddled = 0;
-  for (const item of items) {
-    const near = items.filter(
+  for (const item of placed) {
+    const near = placed.filter(
       (other) =>
         other !== item &&
         other.foodId === item.foodId &&
@@ -322,7 +330,7 @@ function clustering(items: PlacedItem[]): Component {
     if (near >= 2) huddled++;
   }
 
-  const value = clamp01(huddled / items.length);
+  const value = clamp01(huddled / placed.length);
 
   return {
     key: "clustering",

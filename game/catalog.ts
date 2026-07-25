@@ -324,6 +324,25 @@ export const CATEGORY_LABELS: Record<Category, string> = {
 
 export const CATEGORY_ORDER: Category[] = ["meat", "cheese", "produce", "nut", "carb"];
 
+/**
+ * How many of one food still read as a selection rather than a pile.
+ *
+ * Scaled by size, because "too many" is a question of how much board the
+ * repetition eats, not how many times you tapped. A dozen almonds is a
+ * garnish; a dozen brie wedges is a cheese course that has gone wrong.
+ *
+ * Inverse of the radius rather than its square: pieces crowd along the board's
+ * edges as much as they fill its area, and an area law makes the small items
+ * so permissive — two hundred almonds — that the limit stops meaning anything.
+ * The constant is set so almonds land at a dozen and change.
+ *
+ * Yields: almonds and cashews 14–15, olives 13, figs 9, crackers 8, salami 6,
+ * gouda 5, brie and prosciutto 4, grissini 3.
+ */
+export function repetitionLimit(food: Food): number {
+  return Math.min(15, Math.max(3, Math.round(0.77 / food.radius)));
+}
+
 export function foodById(id: string): Food | undefined {
   return CATALOG.find((f) => f.id === id);
 }

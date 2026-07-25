@@ -14,7 +14,7 @@
  *      produces five simultaneous quips and the feed becomes noise.
  */
 
-import { CATALOG } from "../catalog";
+import { CATALOG, foodById, repetitionLimit } from "../catalog";
 import { onBoard, type BoardSnapshot } from "../snapshot";
 import { pairingFor, PAIRING_RADIUS } from "../scoring/pairings";
 import { LINES, type Judge, type Line, type TriggerId } from "./lines";
@@ -195,8 +195,11 @@ export class Director {
         };
       }
 
+      // The same size-aware limit the scorer uses, so the judges never object
+      // to something the bill will not mark down.
+      const food = foodById(newest.foodId);
       const count = items.filter((i) => i.foodId === newest.foodId).length;
-      if (count >= 4) {
+      if (food && count > repetitionLimit(food)) {
         return { id: "repetition", subs: { food: foodName, count } };
       }
 

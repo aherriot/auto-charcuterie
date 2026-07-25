@@ -6,7 +6,12 @@
  * justifies it so the verdict can be specific rather than generic.
  */
 
-import { CATALOG, CATEGORY_ORDER, type Category } from "../catalog";
+import {
+  CATALOG,
+  CATEGORY_ORDER,
+  repetitionLimit,
+  type Category,
+} from "../catalog";
 import { onBoard, type BoardSnapshot, type PlacedItem } from "../snapshot";
 import { pairingFor, PAIRING_RADIUS, type Pairing } from "./pairings";
 
@@ -148,8 +153,11 @@ function collectBalance(
 /**
  * Restraint.
  *
- * The first few of anything are fine. Past that it stops being a choice and
+ * The first several of anything are fine. Past that it stops being a choice and
  * starts being a habit, and the penalty grows superlinearly.
+ *
+ * How many counts as "several" depends on the size of the thing — see
+ * `repetitionLimit`. Scattering fourteen almonds is what almonds are for.
  */
 function collectRepetition(items: PlacedItem[], findings: FoodFinding[]) {
   const counts = new Map<string, number>();
@@ -158,13 +166,21 @@ function collectRepetition(items: PlacedItem[], findings: FoodFinding[]) {
   }
 
   for (const [foodId, count] of counts) {
-    if (count <= 3) continue;
-    const excess = count - 3;
     const food = CATALOG.find((f) => f.id === foodId);
+    if (!food) continue;
+
+    const limit = repetitionLimit(food);
+    if (count <= limit) continue;
+
+    // Measured as a fraction of the limit, so overshooting by half again is
+    // the same lapse whether that is seven almonds past fourteen or two
+    // wedges past four. An absolute excess would make the small items, which
+    // are placed in handfuls, impossible to use.
+    const over = (count - limit) / limit;
     findings.push({
       kind: "repetition",
-      points: -(excess ** 1.4) * 0.55,
-      note: `${count} × ${food?.shortName ?? foodId} is not a decision, it is a habit`,
+      points: -(over ** 1.4) * 5.5,
+      note: `${count} × ${food.shortName} is not a decision, it is a habit`,
     });
   }
 }

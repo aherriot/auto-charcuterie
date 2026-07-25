@@ -186,22 +186,45 @@ describe("food scoring", () => {
     assert.equal(pairings.length, 1);
   });
 
-  it("penalises repetition beyond three", () => {
-    const three = boardOf(
-      Array.from({ length: 3 }, (_, i) => place("salami", -0.3 + i * 0.3, 0)),
-    );
-    const eight = boardOf(
-      Array.from({ length: 8 }, (_, i) => place("salami", -0.7 + i * 0.2, 0)),
+  it("penalises repetition past what the item's size allows", () => {
+    const repeated = (foodId: string, n: number) =>
+      scoreFood(
+        boardOf(
+          Array.from({ length: n }, (_, i) =>
+            place(foodId, -0.9 + (i % 10) * 0.2, -0.3 + Math.floor(i / 10) * 0.3),
+          ),
+        ),
+      ).findings.filter((f) => f.kind === "repetition");
+
+    assert.equal(repeated("salami", 3).length, 0, "three rounds is a selection");
+    assert.equal(repeated("salami", 9).length, 1, "nine is a pile");
+  });
+
+  it("lets small items be scattered in handfuls", () => {
+    // The whole point of almonds. This is the case the old flat limit of three
+    // got wrong: a dozen is a garnish, not a lapse in judgement.
+    const dozen = boardOf(
+      Array.from({ length: 12 }, (_, i) =>
+        place("almonds", -0.9 + (i % 6) * 0.3, -0.2 + Math.floor(i / 6) * 0.4),
+      ),
     );
 
     assert.equal(
-      scoreFood(three).findings.filter((f) => f.kind === "repetition").length,
+      scoreFood(dozen).findings.filter((f) => f.kind === "repetition").length,
       0,
-      "three of something is not yet a habit",
+      "a dozen almonds is fine",
     );
+
+    // Sizes differ, so the same count lands on opposite sides of the line.
+    const dozenWedges = boardOf(
+      Array.from({ length: 12 }, (_, i) =>
+        place("brie", -0.9 + (i % 6) * 0.3, -0.2 + Math.floor(i / 6) * 0.4),
+      ),
+    );
+
     assert.ok(
-      scoreFood(eight).findings.some((f) => f.kind === "repetition"),
-      "eight of something is",
+      scoreFood(dozenWedges).findings.some((f) => f.kind === "repetition"),
+      "a dozen brie wedges is not",
     );
   });
 

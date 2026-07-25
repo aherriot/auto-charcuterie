@@ -91,10 +91,17 @@ export function goodBoard(): BoardSnapshot {
 export function awfulBoard(): BoardSnapshot {
   const items: PlacedItem[] = [];
 
-  // Seven cheddar in a heap in one corner.
-  for (let i = 0; i < 7; i++) {
-    items.push(place("cheddar", -0.9 + (i % 3) * 0.05, -0.6 + Math.floor(i / 3) * 0.05));
+  // Nine salami rounds in a heap in one corner — past what a round that size
+  // is allowed, and touching each other, so this trips both repetition and
+  // clumping. Cheddar can no longer do that job: it is handful-sized now, and
+  // handfuls are deliberately exempt from both.
+  for (let i = 0; i < 9; i++) {
+    items.push(place("salami", -0.9 + (i % 3) * 0.05, -0.6 + Math.floor(i / 3) * 0.05));
   }
+
+  // Two cheddar cubes for the spend to be embarrassed about.
+  items.push(place("cheddar", -0.78, -0.62));
+  items.push(place("cheddar", -0.74, -0.58));
 
   // Clashes, touching.
   items.push(place("honeycomb", -0.85, -0.55));

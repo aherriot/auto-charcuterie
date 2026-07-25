@@ -116,7 +116,7 @@ export const COLLIDERS: Record<MeshId, ColliderSpec> = {
   cracker: { kind: "cuboid", hx: 0.095, hy: 0.0055, hz: 0.095 },
 
   goudaBlock: { kind: "cuboid", hx: 0.15, hy: 0.075, hz: 0.1 },
-  cheddarCube: { kind: "cuboid", hx: 0.075, hy: 0.075, hz: 0.075 },
+  cheddarCube: { kind: "cuboid", hx: 0.045, hy: 0.045, hz: 0.045 },
 
   // Wedges genuinely need their shape — a cheese wedge should be able to tip
   // onto a face, and a box can't express that.

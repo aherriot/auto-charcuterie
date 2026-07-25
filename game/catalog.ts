@@ -171,13 +171,15 @@ export const CATALOG: Food[] = [
     name: "Supermarket Cheddar",
     shortName: "Cheddar",
     category: "cheese",
-    price: 0.2,
+    // A 40%-narrower cube is a shade over a fifth of the volume it was, and
+    // the price follows the cheese rather than the piece.
+    price: 0.05,
     color: [0.72, 0.34, 0.07],
     mesh: "cheddarCube",
     materialId: MaterialId.CHEESE_HARD,
     baseRoughness: 0.5,
     simulation: "rigid",
-    radius: 0.1,
+    radius: 0.06,
     quality: 0.15,
   },
 
@@ -325,22 +327,34 @@ export const CATEGORY_LABELS: Record<Category, string> = {
 export const CATEGORY_ORDER: Category[] = ["meat", "cheese", "produce", "nut", "carb"];
 
 /**
+ * The radius below which a food is something you serve by the handful.
+ *
+ * Olives, nuts, grapes and cheddar cubes are scattered, not placed, so neither
+ * the repetition limit nor the aesthetic clumping penalty should treat a pile
+ * of them as a lapse. Sits just above the largest of them and well below the
+ * cornichon, which is the smallest thing you'd still lay out one at a time.
+ */
+export const HANDFUL_RADIUS = 0.07;
+
+/**
  * How many of one food still read as a selection rather than a pile.
  *
  * Scaled by size, because "too many" is a question of how much board the
- * repetition eats, not how many times you tapped. A dozen almonds is a
- * garnish; a dozen brie wedges is a cheese course that has gone wrong.
+ * repetition eats, not how many times you tapped. Twenty olives is a bowl's
+ * worth tipped out; a dozen brie wedges is a cheese course that has gone wrong.
  *
- * Inverse of the radius rather than its square: pieces crowd along the board's
- * edges as much as they fill its area, and an area law makes the small items
- * so permissive — two hundred almonds — that the limit stops meaning anything.
- * The constant is set so almonds land at a dozen and change.
+ * The 1.5 exponent sits between the two obvious laws. A pure inverse can't
+ * separate them enough — pushing the handful items to twenty drags grissini up
+ * with them — and an area law runs the other way, making the small items so
+ * permissive (two hundred almonds) that the limit stops meaning anything. The
+ * constant is set so everything under `HANDFUL_RADIUS` reaches twenty.
  *
- * Yields: almonds and cashews 14–15, olives 13, figs 9, crackers 8, salami 6,
- * gouda 5, brie and prosciutto 4, grissini 3.
+ * Yields: grapes, olives, nuts and cheddar 19–20, figs 11, crackers 10,
+ * cornichons 8, salami 7, soppressata 6, honeycomb 5, and 4 for everything
+ * from gouda up.
  */
 export function repetitionLimit(food: Food): number {
-  return Math.min(15, Math.max(3, Math.round(0.77 / food.radius)));
+  return Math.min(20, Math.max(4, Math.round(0.28 / food.radius ** 1.5)));
 }
 
 export function foodById(id: string): Food | undefined {

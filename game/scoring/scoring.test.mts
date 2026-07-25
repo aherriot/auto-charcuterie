@@ -112,6 +112,27 @@ describe("aesthetic scoring", () => {
     );
   });
 
+  it("does not punish a handful of small items sitting together", () => {
+    // A scattered heap of olives is how olives are served. Only the plated
+    // items — the wedges and rounds you lay out one by one — can clump.
+    const olivePile = boardOf(
+      Array.from({ length: 8 }, (_, i) =>
+        place("olives", -0.2 + (i % 4) * 0.05, 0.1 + Math.floor(i / 4) * 0.05),
+      ),
+    );
+    const wedgePile = boardOf(
+      Array.from({ length: 8 }, (_, i) =>
+        place("brie", -0.2 + (i % 4) * 0.05, 0.1 + Math.floor(i / 4) * 0.05),
+      ),
+    );
+
+    const clumpOf = (b: ReturnType<typeof boardOf>) =>
+      scoreAesthetics(b).components.find((c) => c.key === "clustering")!.value;
+
+    assert.equal(clumpOf(olivePile), 0, "olives in a heap are not a clump");
+    assert.ok(clumpOf(wedgePile) > 0.5, "eight brie wedges in a heap are");
+  });
+
   it("rewards spread over a single pile", () => {
     const spread = boardOf([
       place("olives", -0.7, -0.4),
@@ -198,23 +219,26 @@ describe("food scoring", () => {
       ).findings.filter((f) => f.kind === "repetition");
 
     assert.equal(repeated("salami", 3).length, 0, "three rounds is a selection");
-    assert.equal(repeated("salami", 9).length, 1, "nine is a pile");
+    assert.equal(repeated("salami", 11).length, 1, "eleven is a pile");
   });
 
   it("lets small items be scattered in handfuls", () => {
     // The whole point of almonds. This is the case the old flat limit of three
-    // got wrong: a dozen is a garnish, not a lapse in judgement.
-    const dozen = boardOf(
-      Array.from({ length: 12 }, (_, i) =>
-        place("almonds", -0.9 + (i % 6) * 0.3, -0.2 + Math.floor(i / 6) * 0.4),
-      ),
-    );
+    // got wrong: a bowl's worth is a garnish, not a lapse in judgement.
+    const twenty = (foodId: string) =>
+      boardOf(
+        Array.from({ length: 20 }, (_, i) =>
+          place(foodId, -0.9 + (i % 7) * 0.28, -0.4 + Math.floor(i / 7) * 0.35),
+        ),
+      );
 
-    assert.equal(
-      scoreFood(dozen).findings.filter((f) => f.kind === "repetition").length,
-      0,
-      "a dozen almonds is fine",
-    );
+    for (const foodId of ["almonds", "cashews", "olives", "grapes"]) {
+      assert.equal(
+        scoreFood(twenty(foodId)).findings.filter((f) => f.kind === "repetition").length,
+        0,
+        `twenty ${foodId} is fine`,
+      );
+    }
 
     // Sizes differ, so the same count lands on opposite sides of the line.
     const dozenWedges = boardOf(

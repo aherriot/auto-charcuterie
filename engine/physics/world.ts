@@ -88,13 +88,16 @@ export class PhysicsWorld {
     colliderDesc: RAPIER.ColliderDesc,
     position: [number, number, number],
     rotation?: [number, number, number, number],
+    // Damping keeps items from rolling forever on a flat board, which both
+    // looks wrong and stops them ever sleeping. How much depends on the shape,
+    // so it comes from `dampingFor` in bodies.ts; the defaults here are the
+    // flat-item values, for callers that don't care.
+    damping: { linear: number; angular: number } = { linear: 0.35, angular: 0.9 },
   ): BodyHandle {
     const desc = RAPIER.RigidBodyDesc.dynamic()
       .setTranslation(...position)
-      // Damping keeps items from rolling forever on a flat board, which both
-      // looks wrong and stops them ever sleeping.
-      .setLinearDamping(0.35)
-      .setAngularDamping(0.55)
+      .setLinearDamping(damping.linear)
+      .setAngularDamping(damping.angular)
       // CCD: an olive dropped from height is small and fast enough to tunnel
       // through the board in a single step without it.
       .setCcdEnabled(true);

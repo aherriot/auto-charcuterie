@@ -9,7 +9,7 @@
 import { CATALOG, type Food } from "../game/catalog";
 import type { BoardSnapshot, PlacedItem } from "../game/snapshot";
 import { buildFoodMesh } from "./mesh/foods";
-import { colliderFor, spawnRotation } from "./physics/bodies";
+import { colliderFor, dampingFor, spawnRotation } from "./physics/bodies";
 import { PhysicsWorld, type BodyHandle } from "./physics/world";
 import type { MeshHandle, SceneRenderer } from "./scene";
 
@@ -89,6 +89,7 @@ export class BoardState {
       colliderFor(food, seed),
       [x, BOARD_TOP + DROP_HEIGHT, z],
       rotation,
+      dampingFor(food),
     );
 
     this.items.push({ instanceId, food, body, mesh, seed, fellOff: false });

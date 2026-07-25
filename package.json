@@ -9,7 +9,7 @@
     "lint": "eslint",
     "lint:wgsl": "node scripts/wgsl-lint.mjs engine/**/*.ts",
     "check:mesh": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./scripts/register-ts.mjs scripts/mesh-check.mts",
-    "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./scripts/register-ts.mjs --test \"game/**/*.test.mts\"",
+    "test": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --import ./scripts/register-ts.mjs --test \"game/**/*.test.mts\" \"engine/**/*.test.mts\"",
     "typecheck": "tsc --noEmit",
     "check": "npm run typecheck && npm run lint:wgsl && npm run check:mesh && npm run test"
   },

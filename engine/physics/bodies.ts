@@ -29,10 +29,57 @@ export interface PhysicsProfile {
 const PROFILES: Record<string, PhysicsProfile> = {
   meat: { density: 1.0, friction: 0.9, restitution: 0.02 },
   cheese: { density: 1.1, friction: 0.8, restitution: 0.03 },
-  produce: { density: 1.0, friction: 0.7, restitution: 0.18 },
-  nut: { density: 0.85, friction: 0.55, restitution: 0.3 },
+  // Produce and nuts are the round ones, and a bounce is what buys a roll its
+  // distance: the piece leaves the board's friction, keeps its spin, and lands
+  // already rolling. Trimmed rather than removed — nuts should still skitter,
+  // they just shouldn't emigrate.
+  produce: { density: 1.0, friction: 0.7, restitution: 0.12 },
+  nut: { density: 0.85, friction: 0.55, restitution: 0.18 },
   carb: { density: 0.5, friction: 0.75, restitution: 0.12 },
 };
+
+export interface Damping {
+  linear: number;
+  angular: number;
+}
+
+/**
+ * Rolling resistance, approximated.
+ *
+ * Rapier has no rolling-friction term, and raising surface friction is the
+ * wrong instinct: friction is what converts a slide into a *roll*, so a
+ * high-friction olive rolls further, not less. Angular damping is the only
+ * lever that bleeds spin, and how much a food needs is a property of its shape
+ * rather than its category — olives are nuts and cornichons are produce, but
+ * both roll for the same reason, which is that they are round.
+ *
+ * The capsule number looks absurd next to the others, and it is load-bearing.
+ * A capsule on a flat board settles into rolling without slipping, and there
+ * the contact solver restores through friction very nearly what damping takes
+ * out each step: measured, an olive holds a constant 3.5cm/s with |w|·r
+ * matching its speed exactly, and never sleeps — it will cross the board and
+ * go over the edge given long enough. The behaviour collapses only once
+ * damping is raised past the point where the solver can sustain the roll,
+ * which for these shapes is somewhere between 13 and 25. Below that threshold
+ * the value barely matters; above it, items settle in about two and a half
+ * seconds. Balls and hulls have no such fixed point and decay normally, so
+ * they keep gentle values.
+ */
+const ROLL_DAMPING: Record<ColliderSpec["kind"], Damping> = {
+  /** Rolls in any direction, but decays honestly. Only needs a nudge. */
+  ball: { linear: 0.55, angular: 6 },
+  /** Olives, cornichons, grissini. See the note above about the threshold. */
+  capsule: { linear: 0.5, angular: 22 },
+  /** Only rolls if it lands on its edge, which is a nice accident when it happens. */
+  cylinder: { linear: 0.4, angular: 1.6 },
+  /** Flat faces stop these on their own; damping them hard just looks dead. */
+  hull: { linear: 0.35, angular: 1 },
+  cuboid: { linear: 0.35, angular: 0.9 },
+};
+
+export function dampingFor(food: Food): Damping {
+  return ROLL_DAMPING[COLLIDERS[food.mesh].kind];
+}
 
 /**
  * Collider shapes as plain data.

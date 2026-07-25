@@ -20,6 +20,7 @@ export type TriggerId =
   | "clash-placed"
   | "pairing-placed"
   | "spend-milestone"
+  | "board-untouched"
   | "board-empty-ish"
   | "board-crowded"
   | "idle"
@@ -34,6 +35,19 @@ export interface Line {
 }
 
 export const LINES: Line[] = [
+  // --- nothing placed yet -------------------------------------------------
+  // These have a job beyond the joke: a first-time player needs to learn that
+  // the menu is where you start. Each one says so while staying in character,
+  // and they get less patient as they go.
+  { judge: "kai", trigger: "board-untouched", weight: 1.4, text: "So it's an empty board. Very conceptual. Pick something off the menu and let's see what we're actually doing." },
+  { judge: "bartholomew", trigger: "board-untouched", weight: 1.4, text: "The menu is to your right. One chooses from it. That is the arrangement." },
+  { judge: "kai", trigger: "board-untouched", weight: 1.1, text: "Choose something on the right, then click where you want it. That's the whole thing." },
+  { judge: "bartholomew", trigger: "board-untouched", weight: 1.1, text: "Nothing has been selected. Nothing, therefore, can be judged. Do begin." },
+  { judge: "kai", trigger: "board-untouched", weight: 0.9, text: "I cannot photograph a plank. Give me something to work with." },
+  { judge: "bartholomew", trigger: "board-untouched", weight: 0.9, text: "I have reviewed empty boards before. They score poorly." },
+  { judge: "kai", trigger: "board-untouched", weight: 0.7, text: "We're still just looking at wood. Lovely wood. Wrong genre." },
+  { judge: "bartholomew", trigger: "board-untouched", weight: 0.7, text: "Take your time. The board is not going anywhere. Neither, apparently, are we." },
+
   // --- opening ------------------------------------------------------------
   { judge: "kai", trigger: "first-item", weight: 1, text: "Okay. One thing. On a large empty board. Very brave, very minimal." },
   { judge: "kai", trigger: "first-item", weight: 1, text: "Starting with {food}. Bold anchor choice. I'm not saying good, I'm saying bold." },

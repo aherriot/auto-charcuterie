@@ -38,6 +38,12 @@ export interface DirectorOptions {
   cooldownMs?: number;
   /** Silence before idle heckling starts, ms. */
   idleAfterMs?: number;
+  /**
+   * Silence before the judges prompt an untouched board. Shorter than idle
+   * heckling — a player who hasn't worked out where to start should not be
+   * left wondering for eleven seconds.
+   */
+  openingAfterMs?: number;
 }
 
 interface Substitutions {
@@ -66,6 +72,7 @@ const SPEND_MILESTONES = [15, 30, 50, 75];
 export class Director {
   private cooldownMs: number;
   private idleAfterMs: number;
+  private openingAfterMs: number;
 
   private rngState: number;
   /**
@@ -92,6 +99,7 @@ export class Director {
   constructor(options: DirectorOptions = {}) {
     this.cooldownMs = options.cooldownMs ?? 2600;
     this.idleAfterMs = options.idleAfterMs ?? 11000;
+    this.openingAfterMs = options.openingAfterMs ?? 5000;
     this.rngState = (options.seed ?? 1) >>> 0 || 1;
   }
 
@@ -106,9 +114,7 @@ export class Director {
     const trigger = this.detectTrigger(snapshot);
     if (!trigger) return null;
 
-    // Idle heckling waits out a longer silence than event lines do.
-    const wait = trigger.id === "idle" ? this.idleAfterMs : this.cooldownMs;
-    if (this.elapsed - this.lastSpokeAt < wait) return null;
+    if (this.elapsed - this.lastSpokeAt < this.waitFor(trigger.id)) return null;
 
     const line = this.pick(trigger.id, trigger.judge);
     if (!line) return null;
@@ -219,19 +225,36 @@ export class Director {
       return { id: "item-placed", subs: { food: foodName } };
     }
 
-    // Nothing happened. Heckle, but only once there's something to heckle.
-    if (items.length > 0) {
-      if (items.length <= 3 && this.elapsed > this.idleAfterMs && this.emptyRemarks < 2) {
-        return {
-          id: "board-empty-ish",
-          subs: {},
-          commit: () => this.emptyRemarks++,
-        };
-      }
-      return { id: "idle", subs: {} };
+    // Nothing has been placed at all. Prompt rather than sit silent: the
+    // player may not have realised the menu is where you start.
+    if (snapshot.items.length === 0) {
+      return { id: "board-untouched", subs: {} };
     }
 
-    return null;
+    if (items.length <= 3 && this.elapsed > this.idleAfterMs && this.emptyRemarks < 2) {
+      return {
+        id: "board-empty-ish",
+        subs: {},
+        commit: () => this.emptyRemarks++,
+      };
+    }
+
+    return { id: "idle", subs: {} };
+  }
+
+  /**
+   * How long a trigger must wait since the last remark.
+   *
+   * Event lines follow the short cooldown; ambient ones wait out a real
+   * silence. The very first prompt on an untouched board comes soonest,
+   * because it is the one line that teaches the player what to do.
+   */
+  private waitFor(id: TriggerId): number {
+    if (id === "idle" || id === "board-empty-ish") return this.idleAfterMs;
+    if (id === "board-untouched") {
+      return this.lastSpokeAt === 0 ? this.openingAfterMs : this.idleAfterMs;
+    }
+    return this.cooldownMs;
   }
 
   /**

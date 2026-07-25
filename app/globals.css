@@ -1,3 +1,49 @@
+/**
+ * Design tokens.
+ *
+ * The interface is a printed restaurant menu laid over a dark, warmly lit
+ * table. It plays the food completely straight — the comedy lands harder when
+ * the typography refuses to acknowledge it.
+ *
+ * No webfonts. The project ships no network assets of any kind and this is not
+ * the place to start; the stacks below degrade through progressively more
+ * common faces.
+ */
+
+:root {
+  /* Paper and ink. `--ink` is a brown-black, the colour of letterpress on warm
+     stock, rather than a neutral charcoal that would read as screen UI. */
+  --paper: #efe8da;
+  --paper-edge: #e3dac8;
+  --ink: #241f1b;
+  --ink-soft: #6b6055;
+  --ink-faint: #9a8f80;
+
+  /* Antique brass for rules and emphasis — deliberately olive and unpolished.
+     A brighter gold reads as a badge or a reward, which this is not. */
+  --brass: #9a7b3f;
+  --brass-bright: #b89755;
+  --rule: #c9bea9;
+
+  /* The single accent, used only where something is wrong or final: an
+     off-board drop, the unpaid stamp on the bill. */
+  --oxblood: #7c2d2d;
+
+  /* The scene behind everything. */
+  --table: #0e0d10;
+
+  /* Didot against Palatino: a high-contrast modern paired with an old-style
+     humanist, which is how printed menus actually set display against body. */
+  --font-display: "Didot", "Bodoni 72", "Bodoni MT", "Hoefler Text", Garamond,
+    "Times New Roman", serif;
+  --font-body: "Palatino", "Palatino Linotype", "Book Antiqua",
+    "Iowan Old Style", Georgia, serif;
+  /* Reserved for the debug readout, which genuinely is a machine readout. */
+  --font-utility: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+
+  --shadow-card: 0 18px 44px rgb(0 0 0 / 0.55), 0 2px 6px rgb(0 0 0 / 0.4);
+}
+
 *,
 *::before,
 *::after {
@@ -13,13 +59,30 @@ body {
   min-height: 100%;
   margin: 0;
   padding: 0;
-  background: #0e0d10;
-  color: #e8e4de;
-  font-family: Georgia, "Times New Roman", serif;
+  background: var(--table);
+  color: var(--paper);
+  font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
 a {
   color: inherit;
+}
+
+/* Keyboard focus stays visible everywhere; brass reads clearly on both paper
+   and table. */
+:focus-visible {
+  outline: 2px solid var(--brass-bright);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

@@ -108,11 +108,42 @@ describe("director", () => {
     assert.notDeepEqual(a, b);
   });
 
-  it("stays silent on an empty board", () => {
+  it("prompts an untouched board rather than sitting silent", () => {
     const director = new Director({ seed: 7 });
-    for (let t = 0; t < 30; t += 0.1) {
-      assert.equal(director.update(0.1, boardOf([])), null);
+    const remarks: string[] = [];
+
+    for (let t = 0; t < 40; t += 0.1) {
+      const remark = director.update(0.1, boardOf([]));
+      if (remark) {
+        assert.equal(remark.trigger, "board-untouched");
+        remarks.push(remark.text);
+      }
     }
+
+    assert.ok(remarks.length > 0, "an empty board should be prompted, not ignored");
+    // The prompt has a job: tell a first-time player where to start.
+    assert.ok(
+      remarks.some((t) => /menu|choose|pick|select/i.test(t)),
+      `no prompt explained what to do: ${remarks.join(" / ")}`,
+    );
+  });
+
+  it("holds its tongue for a moment before prompting", () => {
+    const director = new Director({ seed: 7 });
+    let firstAt: number | null = null;
+
+    for (let t = 0; t < 40; t += 0.1) {
+      const remark = director.update(0.1, boardOf([]));
+      if (remark && firstAt === null) firstAt = remark.at;
+    }
+
+    assert.ok(firstAt !== null, "expected a prompt");
+    // Long enough not to talk over the page loading, short enough that nobody
+    // is left wondering what to do.
+    assert.ok(
+      firstAt >= 4000 && firstAt <= 8000,
+      `first prompt at ${firstAt}ms is outside the useful window`,
+    );
   });
 
   it("reacts when something falls off", () => {

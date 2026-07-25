@@ -48,6 +48,15 @@ export class BoardState {
     return this.items.reduce((sum, i) => sum + i.food.price, 0);
   }
 
+  /** How many of each food are on the board, keyed by food id. */
+  counts(): Record<string, number> {
+    const out: Record<string, number> = {};
+    for (const item of this.items) {
+      out[item.food.id] = (out[item.food.id] ?? 0) + 1;
+    }
+    return out;
+  }
+
   /** True when every body has gone to sleep. */
   get settled(): boolean {
     return this.physics.awakeCount === 0;

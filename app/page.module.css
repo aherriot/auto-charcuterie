@@ -1,78 +1,137 @@
+/**
+ * The landing page as the front of a menu card: a masthead, a rule, and the
+ * two people who will be assessing you.
+ */
+
 .main {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 18px;
   min-height: 100dvh;
-  padding: 40px 24px;
+  padding: 48px 24px;
+}
+
+.card {
+  width: min(470px, 100%);
+  padding: 46px 44px 40px;
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: var(--shadow-card);
   text-align: center;
 }
 
 .eyebrow {
   margin: 0;
-  color: #6d6678;
-  font: 11px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
-  letter-spacing: 0.18em;
+  color: var(--ink-faint);
+  font-size: 10px;
+  letter-spacing: 0.3em;
+  /* Letter-spacing adds trailing space; indent by the same amount to recentre. */
+  text-indent: 0.3em;
   text-transform: uppercase;
 }
 
 .title {
-  margin: 0;
-  font-size: clamp(38px, 7vw, 66px);
+  margin: 14px 0 0;
+  font-family: var(--font-display);
+  font-size: clamp(34px, 6.5vw, 50px);
   font-weight: 400;
-  letter-spacing: 0.01em;
+  letter-spacing: 0.02em;
+  line-height: 1.05;
 }
 
-.blurb {
-  max-width: 46ch;
-  margin: 0;
-  color: #b9b1c4;
-  font-size: 18px;
-  line-height: 1.6;
+/* A single brass rule, the way a menu separates the house from the food. */
+.rule {
+  width: 54px;
+  height: 0;
+  margin: 22px auto;
+  border-top: 1px solid var(--brass);
 }
 
-.note {
-  max-width: 52ch;
-  margin: 6px 0 0;
-  padding-top: 18px;
-  border-top: 1px solid #26232b;
-  color: #7d7688;
-  font-size: 14px;
-  line-height: 1.65;
+.lede {
+  max-width: 34ch;
+  margin: 0 auto;
+  font-size: 17px;
+  line-height: 1.62;
 }
 
-.links {
+.judges {
   display: flex;
-  align-items: center;
-  gap: 22px;
-  margin-top: 8px;
+  justify-content: center;
+  gap: 40px;
+  margin: 30px 0 0;
+  padding: 18px 0;
+  border-top: 1px solid var(--rule);
+  border-bottom: 1px solid var(--rule);
+}
+
+.judges dt {
+  font-family: var(--font-display);
+  font-size: 19px;
+}
+
+.judges dd {
+  margin: 3px 0 0;
+  color: var(--ink-faint);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
 }
 
 .cta {
-  padding: 11px 22px;
-  border: 1px solid #b08d4f;
-  border-radius: 4px;
-  color: #f0d9a8;
-  font-size: 15px;
-  letter-spacing: 0.03em;
+  display: inline-block;
+  margin-top: 30px;
+  padding: 13px 34px;
+  border: 1px solid var(--ink);
+  background: var(--ink);
+  color: var(--paper);
+  font-size: 14px;
+  letter-spacing: 0.18em;
   text-decoration: none;
-  transition: background 0.15s;
+  text-transform: uppercase;
+  transition: background 0.16s ease, border-color 0.16s ease;
 }
 
 .cta:hover {
-  background: #2a2233;
+  background: var(--oxblood);
+  border-color: var(--oxblood);
 }
 
-.secondary {
-  color: #7d7688;
-  font-size: 14px;
+.footnote {
+  max-width: 40ch;
+  margin: 28px auto 0;
+  color: var(--ink-faint);
+  font-size: 12.5px;
+  font-style: italic;
+  line-height: 1.55;
+}
+
+.aside {
+  display: flex;
+  gap: 26px;
+  margin-top: 26px;
+}
+
+.aside a {
+  color: var(--ink-faint);
+  font-size: 12px;
+  letter-spacing: 0.1em;
   text-decoration: none;
   border-bottom: 1px solid transparent;
-  transition: color 0.15s, border-color 0.15s;
+  transition: color 0.15s ease, border-color 0.15s ease;
 }
 
-.secondary:hover {
-  color: #b9b1c4;
-  border-bottom-color: #4a4453;
+.aside a:hover {
+  color: var(--brass-bright);
+  border-bottom-color: var(--brass);
+}
+
+@media (max-width: 520px) {
+  .card {
+    padding: 34px 24px 30px;
+  }
+
+  .judges {
+    gap: 24px;
+  }
 }

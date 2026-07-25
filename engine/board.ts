@@ -29,6 +29,8 @@ export interface BoardStats {
   spend: number;
   awake: number;
   settled: boolean;
+  /** Per-food tallies, so the tray can read as an itemised bill. */
+  counts: Record<string, number>;
 }
 
 export class BoardScene {
@@ -226,6 +228,7 @@ export class BoardScene {
         spend: this.state.spend,
         awake: this.physics.awakeCount,
         settled: this.state.settled,
+        counts: this.state.counts(),
       });
       this.fpsAccum = 0;
       this.fpsFrames = 0;

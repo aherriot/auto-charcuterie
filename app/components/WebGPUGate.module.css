@@ -1,49 +1,72 @@
+/**
+ * Turned away at the door, on the same card stock as the menu — so the refusal
+ * reads as house policy rather than an error page.
+ */
+
 .gate {
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 16px;
   min-height: 100dvh;
-  padding: 40px 24px;
+  padding: 32px 24px;
+}
+
+.card {
+  width: min(460px, 100%);
+  padding: 44px 40px 36px;
+  background: var(--paper);
+  color: var(--ink);
+  box-shadow: var(--shadow-card);
   text-align: center;
 }
 
 .eyebrow {
   margin: 0;
-  color: #6d6678;
-  font: 11px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
-  letter-spacing: 0.2em;
+  color: var(--ink-faint);
+  font-size: 10px;
+  letter-spacing: 0.3em;
+  text-indent: 0.3em;
   text-transform: uppercase;
 }
 
 .title {
-  margin: 0;
-  font-size: clamp(34px, 6vw, 54px);
+  margin: 14px 0 0;
+  font-family: var(--font-display);
+  font-size: clamp(30px, 5.5vw, 42px);
   font-weight: 400;
+  letter-spacing: 0.01em;
+}
+
+.rule {
+  width: 54px;
+  height: 0;
+  margin: 20px auto;
+  border-top: 1px solid var(--oxblood);
 }
 
 .body {
-  max-width: 48ch;
-  margin: 0;
-  color: #b9b1c4;
-  font-size: 17px;
-  line-height: 1.65;
+  max-width: 38ch;
+  margin: 0 auto;
+  font-size: 16px;
+  line-height: 1.62;
 }
 
 .help {
-  max-width: 48ch;
-  margin: 8px 0 0;
+  max-width: 40ch;
+  margin: 24px auto 0;
   padding-top: 18px;
-  border-top: 1px solid #26232b;
-  color: #7d7688;
-  font-size: 14px;
+  border-top: 1px solid var(--rule);
+  color: var(--ink-soft);
+  font-size: 13.5px;
+  line-height: 1.55;
 }
 
 .detail {
-  padding: 6px 10px;
-  border-radius: 4px;
-  background: #1b1821;
-  color: #6d6678;
-  font-size: 11px;
+  display: block;
+  margin-top: 14px;
+  color: var(--ink-faint);
+  font-family: var(--font-utility);
+  font-size: 10px;
+  line-height: 1.5;
+  word-break: break-word;
 }

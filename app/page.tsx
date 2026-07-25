@@ -4,30 +4,40 @@ import styles from "./page.module.css";
 export default function Home() {
   return (
     <main className={styles.main}>
-      <p className={styles.eyebrow}>Phase 2 · geometry &amp; materials</p>
-      <h1 className={styles.title}>Auto&#8209;Charcuterie</h1>
-      <p className={styles.blurb}>
-        Build a charcuterie board. Be judged for it, harshly, by two people who
-        were not invited.
-      </p>
+      <article className={styles.card}>
+        <p className={styles.eyebrow}>Est. this afternoon</p>
+        <h1 className={styles.title}>Auto&#8209;Charcuterie</h1>
+        <p className={styles.rule} aria-hidden="true" />
 
-      <p className={styles.note}>
-        Not playable yet. The board renders and you can walk around it, but
-        nothing lands on it by hand until Phase 3. Everything you see is
-        generated from maths &mdash; there are no models or textures in this
-        project.
-      </p>
+        <p className={styles.lede}>
+          Build a charcuterie board. Be judged for it, harshly, by two people who
+          were not invited.
+        </p>
 
-      <nav className={styles.links}>
+        <dl className={styles.judges}>
+          <div>
+            <dt>Kai</dt>
+            <dd>on presentation</dd>
+          </div>
+          <div>
+            <dt>Bartholomew</dt>
+            <dd>on the food</dd>
+          </div>
+        </dl>
+
         <Link href="/board" className={styles.cta}>
-          View the board →
+          Take a seat
         </Link>
-        <Link href="/catalog" className={styles.secondary}>
-          Catalogue
-        </Link>
-        <Link href="/spike/cloth" className={styles.secondary}>
-          Cloth spike
-        </Link>
+
+        <p className={styles.footnote}>
+          Every shape and every texture is generated from maths. There are no
+          models and no images in this project.
+        </p>
+      </article>
+
+      <nav className={styles.aside}>
+        <Link href="/catalog">The catalogue</Link>
+        <Link href="/spike/cloth">Cloth spike</Link>
       </nav>
     </main>
   );

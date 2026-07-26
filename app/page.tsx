@@ -1,5 +1,21 @@
-import Link from "next/link";
 import styles from "./page.module.css";
+
+/**
+ * Deliberately plain <a> rather than next/link.
+ *
+ * Nothing on this page is interactive — it's a title card and three links — so
+ * as a server component it needs no client JS at all. `next/link` is itself a
+ * client component: it would hydrate here only to intercept clicks and to
+ * prefetch every linked route on sight, and prefetching /board pulls its whole
+ * chunk graph down onto a page that renders none of it.
+ *
+ * The thing we give up is a soft transition into /board, and it isn't worth
+ * much: /board has to create a WebGPU device, compile shaders, and boot a
+ * physics world when it arrives, so a client-side navigation saves a document
+ * parse and then waits on engine init regardless.
+ *
+ * Links on pages that *are* already interactive should keep using next/link.
+ */
 
 export default function Home() {
   return (
@@ -25,9 +41,9 @@ export default function Home() {
           </div>
         </dl>
 
-        <Link href="/board" className={styles.cta}>
+        <a href="/board" className={styles.cta}>
           Start plating
-        </Link>
+        </a>
 
         <p className={styles.footnote}>
           Every shape and every texture is generated from maths. There are no
@@ -36,8 +52,8 @@ export default function Home() {
       </article>
 
       <nav className={styles.aside}>
-        <Link href="/catalog">The catalogue</Link>
-        <Link href="/spike/cloth">Cloth spike</Link>
+        <a href="/catalog">The catalogue</a>
+        <a href="/spike/cloth">Cloth spike</a>
       </nav>
     </main>
   );

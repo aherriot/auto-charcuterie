@@ -6,7 +6,7 @@
  * knows about the cloth solver; Phase 4 couples them one-way.
  */
 
-import RAPIER from "@dimforge/rapier3d-simd-compat";
+import type * as Rapier from "@dimforge/rapier3d-simd-compat";
 
 /**
  * Fixed physics rate. Decoupling this from the render rate means a 120Hz
@@ -29,11 +29,37 @@ export interface BodyState {
   asleep: boolean;
 }
 
+/**
+ * Rapier is loaded on demand, not statically imported.
+ *
+ * The `-compat` build inlines its WASM as base64, so a static import lands 2.3MB
+ * in the board route's *initial* client chunk. That delays the board's own first
+ * paint, and it also leaks: the homepage prefetches `/board` on sight, so every
+ * visitor downloads a physics engine to look at a title card. Behind a dynamic
+ * import it becomes a chunk of its own, fetched only when a board is built.
+ *
+ * Reached through `rapier()` rather than a mutable exported binding: whether a
+ * re-exported `let` is still live after bundling is a bundler-specific detail,
+ * and this is the app's main path. A function call is unambiguous everywhere,
+ * and it can say what went wrong when the module hasn't been initialised.
+ */
+let loaded: typeof import("@dimforge/rapier3d-simd-compat") | null = null;
+
+/** The Rapier module. Throws unless `initPhysics()` has resolved. */
+export function rapier(): typeof import("@dimforge/rapier3d-simd-compat") {
+  if (!loaded) throw new Error("Rapier used before initPhysics() resolved");
+  return loaded;
+}
+
 let rapierReady: Promise<void> | null = null;
 
-/** Rapier's WASM must be initialised once before any API call. */
+/** Loads Rapier and initialises its WASM. Must be awaited before any API call. */
 export function initPhysics(): Promise<void> {
-  rapierReady ??= RAPIER.init();
+  rapierReady ??= (async () => {
+    const mod = await import("@dimforge/rapier3d-simd-compat");
+    await mod.init();
+    loaded = mod;
+  })();
   return rapierReady;
 }
 
@@ -46,8 +72,8 @@ export interface PhysicsWorldOptions {
 }
 
 export class PhysicsWorld {
-  private world: RAPIER.World;
-  private bodies = new Map<number, RAPIER.RigidBody>();
+  private world: Rapier.World;
+  private bodies = new Map<number, Rapier.RigidBody>();
   private nextId = 1;
   private accumulator = 0;
   private options: Required<PhysicsWorldOptions>;
@@ -57,7 +83,8 @@ export class PhysicsWorld {
 
   constructor(options: PhysicsWorldOptions) {
     this.options = { floorY: -2, ...options };
-    this.world = new RAPIER.World({ x: 0, y: -9.81, z: 0 });
+    this.world = new (rapier().World)({ x: 0, y: -9.81, z: 0 });
+
     this.world.timestep = FIXED_STEP;
     this.buildBoard();
   }
@@ -68,11 +95,12 @@ export class PhysicsWorld {
     // The board slab. Its top surface sits at boardTop, so the collider is
     // centred half a thickness below.
     const thickness = 0.06;
+    const R = rapier();
     const body = this.world.createRigidBody(
-      RAPIER.RigidBodyDesc.fixed().setTranslation(0, boardTop - thickness, 0),
+      R.RigidBodyDesc.fixed().setTranslation(0, boardTop - thickness, 0),
     );
     this.world.createCollider(
-      RAPIER.ColliderDesc.cuboid(boardHalfX, thickness, boardHalfZ)
+      R.ColliderDesc.cuboid(boardHalfX, thickness, boardHalfZ)
         // Boards are wooden and food is damp: things should not skate around.
         .setFriction(0.85)
         .setRestitution(0.02),
@@ -85,7 +113,7 @@ export class PhysicsWorld {
    * the per-food shape decisions.
    */
   addBody(
-    colliderDesc: RAPIER.ColliderDesc,
+    colliderDesc: Rapier.ColliderDesc,
     position: [number, number, number],
     rotation?: [number, number, number, number],
     // Damping keeps items from rolling forever on a flat board, which both
@@ -94,7 +122,8 @@ export class PhysicsWorld {
     // flat-item values, for callers that don't care.
     damping: { linear: number; angular: number } = { linear: 0.35, angular: 0.9 },
   ): BodyHandle {
-    const desc = RAPIER.RigidBodyDesc.dynamic()
+    const desc = rapier()
+      .RigidBodyDesc.dynamic()
       .setTranslation(...position)
       .setLinearDamping(damping.linear)
       .setAngularDamping(damping.angular)
@@ -189,4 +218,4 @@ export class PhysicsWorld {
   }
 }
 
-export { RAPIER };
+

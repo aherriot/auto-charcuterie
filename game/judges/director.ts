@@ -32,18 +32,48 @@ export interface Remark {
   at: number;
 }
 
-export interface DirectorOptions {
-  seed?: number;
+/**
+ * How often the judges are willing to speak.
+ *
+ * Pacing is a property of the screen as much as of the script: the feed shows
+ * fewer lines when there is less room for them, and a line that is pushed out
+ * before it has been read may as well not have been said. So the cadence is
+ * set against how many lines are on show, not fixed once.
+ */
+export interface DirectorPacing {
   /** Minimum gap between remarks, ms. */
-  cooldownMs?: number;
+  cooldownMs: number;
   /** Silence before idle heckling starts, ms. */
-  idleAfterMs?: number;
+  idleAfterMs: number;
   /**
    * Silence before the judges prompt an untouched board. Shorter than idle
    * heckling — a player who hasn't worked out where to start should not be
-   * left wondering for eleven seconds.
+   * left wondering. Not scaled with the rest: it is one line, said once, and
+   * it is the line that teaches the player where to start.
    */
-  openingAfterMs?: number;
+  openingAfterMs: number;
+}
+
+/** Five lines on show, so each one has four more arrivals before it goes. */
+export const PACING_ROOMY: DirectorPacing = {
+  cooldownMs: 4200,
+  idleAfterMs: 16000,
+  openingAfterMs: 5000,
+};
+
+/**
+ * Two lines on show. The same cadence here would retire a remark barely after
+ * it had arrived, so it slows by about half again — enough that a line can be
+ * read twice over before anything displaces it.
+ */
+export const PACING_CRAMPED: DirectorPacing = {
+  cooldownMs: 7000,
+  idleAfterMs: 23000,
+  openingAfterMs: 5000,
+};
+
+export interface DirectorOptions extends Partial<DirectorPacing> {
+  seed?: number;
 }
 
 interface Substitutions {
@@ -103,10 +133,21 @@ export class Director {
   private emptyRemarks = 0;
 
   constructor(options: DirectorOptions = {}) {
-    this.cooldownMs = options.cooldownMs ?? 2600;
-    this.idleAfterMs = options.idleAfterMs ?? 11000;
-    this.openingAfterMs = options.openingAfterMs ?? 5000;
+    this.cooldownMs = options.cooldownMs ?? PACING_ROOMY.cooldownMs;
+    this.idleAfterMs = options.idleAfterMs ?? PACING_ROOMY.idleAfterMs;
+    this.openingAfterMs = options.openingAfterMs ?? PACING_ROOMY.openingAfterMs;
     this.rngState = (options.seed ?? 1) >>> 0 || 1;
+  }
+
+  /**
+   * Retunes the cadence mid-session, for a window that has been resized or a
+   * tablet that has been turned. Only affects what is said from here on; a
+   * remark already on screen keeps its place.
+   */
+  setPacing(pacing: DirectorPacing) {
+    this.cooldownMs = pacing.cooldownMs;
+    this.idleAfterMs = pacing.idleAfterMs;
+    this.openingAfterMs = pacing.openingAfterMs;
   }
 
   /**

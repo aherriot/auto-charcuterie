@@ -386,16 +386,28 @@
 
 /* --- running commentary ------------------------------------------------- */
 
-.feed {
+/*
+ * The clip. Sized by its content and anchored at the foot, so it grows
+ * upwards as the stack fills. It exists only to hide the incoming line, which
+ * starts the frame below this edge and rises through it — see JudgeFeed for
+ * why the list slides rather than the box resizing.
+ */
+.feedWrap {
   position: absolute;
   left: 40px;
   bottom: 62px;
+  /* Measure in ch, so line length stays readable as the type scales. */
+  max-width: 46ch;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/* Transformed from script on every change; nothing else may move it. */
+.feed {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  /* Measure in ch, so line length stays readable as the type scales. */
-  max-width: 46ch;
-  pointer-events: none;
+  will-change: transform;
 }
 
 .feed p {
@@ -408,9 +420,15 @@
   font-size: 15px;
   line-height: 1.52;
   backdrop-filter: blur(10px);
-  /* Newest arrives at the bottom; the rise reads as "just said". */
-  animation: rise 0.32s ease-out;
-  transition: opacity 0.4s ease;
+  /* A new line fades up as it rises through the foot of the clip. The rising
+     is the list's transform, not this: a second transform here would both
+     double the movement and put every line's measured position 6px out,
+     which is what the list measures itself against. Opacity only.
+     Matched to FEED_SLIDE_MS in JudgeFeed. */
+  animation: fade 0.52s ease-out;
+  /* The recency wash, as the stack demotes each line behind the newest. Runs
+     longer than the arrival: it is the background settling, not the event. */
+  transition: opacity 0.65s ease;
   /* Recency fade: the newest line carries full weight and older ones recede,
      so the eye lands on what was just said rather than scanning the stack. */
   opacity: 0.34;
@@ -426,6 +444,20 @@
 
 .feed p:nth-last-child(1) {
   opacity: 1;
+}
+
+/* The line fading out before it's dropped from the list. It keeps its full
+   space while doing so; when it finally goes it is the topmost line, and the
+   foot-anchored stack below it does not move. Placed after the recency rules
+   so it wins on source order regardless of where in the stack it sits.
+   `animation: none` matters: a line evicted while still fading in would
+   otherwise keep the animation's opacity, which outranks this one. */
+.feed p.leaving {
+  animation: none;
+  opacity: 0;
+  /* Matched to FEED_FADE_MS in JudgeFeed, which is the timer that unmounts
+     it: longer here and the line is cut off mid-fade. */
+  transition: opacity 0.36s ease;
 }
 
 .feed strong {
@@ -452,17 +484,6 @@
 
 .bart strong {
   color: #8aa87a;
-}
-
-@keyframes rise {
-  from {
-    opacity: 0;
-    transform: translateY(6px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
 }
 
 /* --- the bill ------------------------------------------------------------ */
@@ -855,11 +876,14 @@
 
 /* The commentary is the joke, so it takes real estate once there is room. */
 @media (min-width: 1100px) {
-  .feed {
+  .feedWrap {
     left: 48px;
     bottom: 68px;
-    gap: 10px;
     max-width: 50ch;
+  }
+
+  .feed {
+    gap: 10px;
   }
 
   .feed p {
@@ -873,7 +897,7 @@
 }
 
 @media (min-width: 1500px) {
-  .feed {
+  .feedWrap {
     left: 58px;
     bottom: 80px;
     max-width: 54ch;
@@ -904,14 +928,6 @@
   .billBody {
     grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
     gap: 36px;
-  }
-}
-
-/* Below this the feed keeps only the two most recent, so it never crowds out
-   the board it is commenting on. */
-@media (max-width: 1099px) {
-  .feed p:nth-last-child(n + 3) {
-    display: none;
   }
 }
 
@@ -959,7 +975,7 @@
     padding: 20px 22px;
   }
 
-  .feed {
+  .feedWrap {
     left: 10px;
     right: 10px;
     top: 108px;

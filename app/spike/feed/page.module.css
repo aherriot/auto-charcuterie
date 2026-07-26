@@ -1,0 +1,33 @@
+/* Throwaway. Just enough table for the commentary to sit on. */
+
+/* Striped, so the lines' backdrop-filter blur is actually visible: a flat
+   background would hide it going wrong. */
+.main {
+  position: relative;
+  width: 100%;
+  height: 100dvh;
+  overflow: hidden;
+  background: repeating-linear-gradient(
+    62deg,
+    #241f1b 0 18px,
+    #6d4b2f 18px 36px
+  );
+}
+
+.controls {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  display: flex;
+  gap: 8px;
+}
+
+.controls button {
+  padding: 8px 12px;
+  border: 1px solid var(--rule);
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 13px;
+  cursor: pointer;
+}

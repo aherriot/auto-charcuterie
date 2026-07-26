@@ -11,10 +11,11 @@ import {
 import Link from "next/link";
 import { BoardScene, type BoardStats } from "@/engine/board";
 import { CATALOG, CATEGORY_LABELS, CATEGORY_ORDER } from "@/game/catalog";
-import type { Remark } from "@/game/judges/director";
+import { PACING_CRAMPED, PACING_ROOMY } from "@/game/judges/director";
 import type { Judgement } from "@/game/judges/index";
 import { JUDGE_NAMES, JUDGE_TITLES } from "@/game/judges/lines";
 import { WebGPUGate } from "../components/WebGPUGate";
+import { JudgeFeed, useFeedWide, type JudgeFeedHandle } from "./JudgeFeed";
 import styles from "./page.module.css";
 
 const EMPTY_STATS: BoardStats = {
@@ -41,7 +42,10 @@ export default function BoardPage() {
   const [stats, setStats] = useState<BoardStats>(EMPTY_STATS);
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
-  const [feed, setFeed] = useState<Remark[]>([]);
+  // The commentary owns its own list, its own cap and its own animation; the
+  // board only hands it lines. Keeping it out of this component's state is
+  // also what stops a judge speaking from re-rendering the menu and the bill.
+  const feedRef = useRef<JudgeFeedHandle>(null);
   const [judgement, setJudgement] = useState<Judgement | null>(null);
   // Only the narrow layout acts on this; the wide card is always open. Kept in
   // one place so the head, the body and the chevron cannot disagree.
@@ -60,6 +64,17 @@ export default function BoardPage() {
     () => false,
   );
 
+  // A narrow feed keeps two lines rather than five, so the judges have to
+  // speak more slowly for a remark to survive long enough to be read. Held in
+  // a ref as well because the scene is created asynchronously: whichever of
+  // the two arrives second is the one that applies it.
+  const feedWide = useFeedWide();
+  const pacingRef = useRef(PACING_ROOMY);
+  useEffect(() => {
+    pacingRef.current = feedWide ? PACING_ROOMY : PACING_CRAMPED;
+    sceneRef.current?.setPacing(pacingRef.current);
+  }, [feedWide]);
+
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -77,11 +92,9 @@ export default function BoardPage() {
         }
         scene = s;
         sceneRef.current = s;
+        s.setPacing(pacingRef.current);
         s.onStats = setStats;
-        // Keep a short tail — the feed is a running commentary, not a
-        // transcript. CSS hides the older entries on narrow screens, so the
-        // count here is the maximum a large display shows.
-        s.onRemark = (remark) => setFeed((prev) => [...prev, remark].slice(-5));
+        s.onRemark = (remark) => feedRef.current?.push(remark);
       })
       .catch((e: unknown) => {
         if (!cancelled) setError(e instanceof Error ? e.message : String(e));
@@ -132,7 +145,7 @@ export default function BoardPage() {
 
   const clear = useCallback(() => {
     sceneRef.current?.clear();
-    setFeed([]);
+    feedRef.current?.clear();
     setJudgement(null);
   }, []);
 
@@ -289,19 +302,7 @@ export default function BoardPage() {
       </aside>
 
       {/* --- running commentary ------------------------------------------ */}
-      {feed.length > 0 && !judgement && (
-        <div className={styles.feed} aria-live="polite">
-          {feed.map((r) => (
-            <p
-              key={`${r.at}-${r.text}`}
-              className={r.judge === "kai" ? styles.kai : styles.bart}
-            >
-              <strong>{JUDGE_NAMES[r.judge]}</strong>
-              {r.text}
-            </p>
-          ))}
-        </div>
-      )}
+      <JudgeFeed ref={feedRef} hidden={judgement !== null} />
 
       {/* --- the bill ----------------------------------------------------- */}
       {judgement && (

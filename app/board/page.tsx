@@ -325,6 +325,7 @@ export default function BoardPage() {
                     <p className={styles.scoresLabel}>Assessed</p>
                     <p className={styles.overall}>
                       {Math.round(judgement.overall)}
+                      <span className={styles.outOf}>/100</span>
                     </p>
                   </div>
 
@@ -335,7 +336,10 @@ export default function BoardPage() {
                         <span className={styles.role}>
                           {JUDGE_TITLES[v.judge]}
                         </span>
-                        <span className={styles.mark}>{Math.round(v.score)}</span>
+                        <span className={styles.mark}>
+                          {Math.round(v.score)}
+                          <span className={styles.markOutOf}>/100</span>
+                        </span>
                       </header>
                       <p className={styles.headline}>{v.headline}</p>
                       <p className={styles.body}>{v.body}</p>

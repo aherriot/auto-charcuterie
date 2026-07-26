@@ -10,7 +10,12 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import { boardOf, place } from "../fixtures";
-import { Director } from "./director";
+import {
+  Director,
+  PACING_CRAMPED,
+  PACING_ROOMY,
+  type DirectorPacing,
+} from "./director";
 import { LINES } from "./lines";
 import type { PlacedItem } from "../snapshot";
 
@@ -21,11 +26,16 @@ import type { PlacedItem } from "../snapshot";
  */
 function runSession(
   foods: string[],
-  options: { seed?: number; dropEvery?: number; totalSeconds?: number } = {},
+  options: {
+    seed?: number;
+    dropEvery?: number;
+    totalSeconds?: number;
+    pacing?: DirectorPacing;
+  } = {},
 ) {
-  const { seed = 1, dropEvery = 3, totalSeconds = 90 } = options;
+  const { seed = 1, dropEvery = 3, totalSeconds = 90, pacing } = options;
 
-  const director = new Director({ seed });
+  const director = new Director({ seed, ...pacing });
   const items: PlacedItem[] = [];
   const remarks: Array<{ judge: string; text: string; at: number }> = [];
 
@@ -92,7 +102,36 @@ describe("director", () => {
     const remarks = runSession(THIRTY_ITEMS, { dropEvery: 0.2, totalSeconds: 60 });
     for (let i = 1; i < remarks.length; i++) {
       const gap = remarks[i].at - remarks[i - 1].at;
-      assert.ok(gap >= 2500, `remarks only ${gap.toFixed(0)}ms apart`);
+      // Against the configured pacing rather than a number, so retuning the
+      // cadence cannot quietly leave this asserting something weaker.
+      assert.ok(
+        gap >= PACING_ROOMY.cooldownMs - 100,
+        `remarks only ${gap.toFixed(0)}ms apart`,
+      );
+    }
+  });
+
+  it("slows down when the feed has room for fewer lines", () => {
+    const fast = runSession(THIRTY_ITEMS, { dropEvery: 0.5, totalSeconds: 90 });
+    const slow = runSession(THIRTY_ITEMS, {
+      dropEvery: 0.5,
+      totalSeconds: 90,
+      pacing: PACING_CRAMPED,
+    });
+
+    // The narrow feed shows two lines to the wide one's five, so it has to
+    // say materially less in the same time or a remark is gone before it can
+    // be read. Compared as a rate, not a fixed count.
+    assert.ok(
+      slow.length < fast.length * 0.8,
+      `cramped pacing said ${slow.length} against ${fast.length} — not slower enough to matter`,
+    );
+    for (let i = 1; i < slow.length; i++) {
+      const gap = slow[i].at - slow[i - 1].at;
+      assert.ok(
+        gap >= PACING_CRAMPED.cooldownMs - 100,
+        `remarks only ${gap.toFixed(0)}ms apart on a cramped feed`,
+      );
     }
   });
 

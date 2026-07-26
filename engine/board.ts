@@ -9,7 +9,11 @@ import { SceneRenderer } from "./scene";
 import { roundedBox } from "./mesh/primitives";
 import { MaterialId } from "../game/catalog";
 import type { BoardSnapshot } from "../game/snapshot";
-import { Director, type Remark } from "../game/judges/director";
+import {
+  Director,
+  type DirectorPacing,
+  type Remark,
+} from "../game/judges/director";
 import { judge, type Judgement } from "../game/judges/index";
 import { initPhysics, PhysicsWorld } from "./physics/world";
 import { DropIndicator } from "./dropIndicator";
@@ -223,6 +227,11 @@ export class BoardScene {
   clear() {
     this.state.clear();
     this.director.reset();
+  }
+
+  /** How often the judges may speak. Set from the layout — see JudgeFeed. */
+  setPacing(pacing: DirectorPacing) {
+    this.director.setPacing(pacing);
   }
 
   snapshot(): BoardSnapshot {

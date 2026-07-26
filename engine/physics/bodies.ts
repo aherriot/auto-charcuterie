@@ -10,9 +10,13 @@
  * need to be exact — they need to feel right when items stack.
  */
 
+import type * as Rapier from "@dimforge/rapier3d-simd-compat";
 import type { Food, MeshId } from "../../game/catalog";
 import { buildFoodMesh } from "../mesh/foods";
-import { RAPIER } from "./world";
+// Rapier is loaded on demand and reached through this accessor — see world.ts.
+// The types come from the type-only import above, which erases rather than
+// pulling the WASM back into this chunk.
+import { rapier } from "./world";
 
 export interface PhysicsProfile {
   /** kg/m³-ish. Relative values are what matter, not absolute realism. */
@@ -165,7 +169,7 @@ export function colliderExtents(spec: ColliderSpec): [number, number, number] | 
 }
 
 /** Builds the collider for a food, seeded to match its mesh where a hull is used. */
-export function colliderFor(food: Food, seed = 0): RAPIER.ColliderDesc {
+export function colliderFor(food: Food, seed = 0): Rapier.ColliderDesc {
   const profile = PROFILES[food.category];
   const spec = COLLIDERS[food.mesh];
   const desc = descFor(spec, food.mesh, seed);
@@ -191,16 +195,16 @@ export function colliderFor(food: Food, seed = 0): RAPIER.ColliderDesc {
     .setRestitution(profile.restitution);
 }
 
-function descFor(spec: ColliderSpec, mesh: MeshId, seed: number): RAPIER.ColliderDesc {
+function descFor(spec: ColliderSpec, mesh: MeshId, seed: number): Rapier.ColliderDesc {
   switch (spec.kind) {
     case "ball":
-      return RAPIER.ColliderDesc.ball(spec.radius);
+      return rapier().ColliderDesc.ball(spec.radius);
     case "cuboid":
-      return RAPIER.ColliderDesc.cuboid(spec.hx, spec.hy, spec.hz);
+      return rapier().ColliderDesc.cuboid(spec.hx, spec.hy, spec.hz);
     case "capsule":
-      return RAPIER.ColliderDesc.capsule(spec.halfHeight, spec.radius);
+      return rapier().ColliderDesc.capsule(spec.halfHeight, spec.radius);
     case "cylinder":
-      return RAPIER.ColliderDesc.cylinder(spec.halfHeight, spec.radius);
+      return rapier().ColliderDesc.cylinder(spec.halfHeight, spec.radius);
     case "hull":
       return hullFor(mesh, seed);
   }
@@ -212,7 +216,7 @@ function descFor(spec: ColliderSpec, mesh: MeshId, seed: number): RAPIER.Collide
  * Falls back to a bounding box: `convexHull` returns null for degenerate input,
  * and a silently missing collider would mean food falling through the board.
  */
-function hullFor(mesh: MeshId, seed: number): RAPIER.ColliderDesc {
+function hullFor(mesh: MeshId, seed: number): Rapier.ColliderDesc {
   const data = buildFoodMesh(mesh, seed);
 
   const points = new Float32Array((data.vertices.length / 6) * 3);
@@ -222,7 +226,7 @@ function hullFor(mesh: MeshId, seed: number): RAPIER.ColliderDesc {
     points[o + 2] = data.vertices[i + 2];
   }
 
-  const hull = RAPIER.ColliderDesc.convexHull(points);
+  const hull = rapier().ColliderDesc.convexHull(points);
   if (hull) return hull;
 
   let hx = 0;
@@ -233,7 +237,7 @@ function hullFor(mesh: MeshId, seed: number): RAPIER.ColliderDesc {
     hy = Math.max(hy, Math.abs(points[i + 1]));
     hz = Math.max(hz, Math.abs(points[i + 2]));
   }
-  return RAPIER.ColliderDesc.cuboid(hx || 0.01, hy || 0.01, hz || 0.01);
+  return rapier().ColliderDesc.cuboid(hx || 0.01, hy || 0.01, hz || 0.01);
 }
 
 /**
